@@ -3,61 +3,119 @@ import type { ImpLeaderDef, LeaderId } from '../types';
 /**
  * Leaders — EDITABLE CONFIG.
  *
- * MVP TEMPORARY SHORTCUT: only the signet-ring ability is machine-implemented
- * (it fires when the signet starting card is played on an agent turn). Each
- * leader's passive is recorded as an original-wording note and not yet
- * enforced by the engine — wire them up as engine hooks in a later milestone.
- * VERIFY all values against the leader sheets you own.
+ * Each leader has a signet-ring ability (fired by the signet starting card on
+ * an agent turn) plus a machine-enforced passive expressed as data and
+ * consumed at a named engine hook (`onReveal`, `onAgentPlaced`,
+ * `combatStrength`, `onRoundStart`) — the same data-driven pattern the classic
+ * game uses for faction powers. A passive whose real effect needs a player
+ * choice prompt (not yet available — see HANDOFF gap #3) is left as a
+ * `passiveNote` instead of a machine passive.
+ *
+ * VERIFY: every summary is original wording and every number below is a
+ * placeholder to be checked against the leader sheets you own. Correct the
+ * `params` (and add/remove passives) to match your copy — the engine reads
+ * only this config.
  */
 export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   paulAtreides: {
     id: 'paulAtreides',
     name: 'Paul Atreides',
     signetGains: { drawCards: 1 },
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — may look at the top card of his deck at any time (config TODO).',
+    // Real ability lets him inspect the top of his deck and reorder it — that
+    // needs a pending-decision prompt (HANDOFF gap #3), so it stays a note.
+    passiveNote: 'PASSIVE (note only) — foresight over the top of his own deck; awaits the choice-prompt system before it can be machine-enforced.',
   },
   dukeLeto: {
     id: 'dukeLeto',
     name: 'Duke Leto Atreides',
     signetGains: { solari: 2 },
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — signet/economy synergy per the leader sheet (config TODO).',
+    passives: [
+      {
+        id: 'leto-reveal-income',
+        hook: 'onReveal',
+        summary: 'Turns his standing into coin: gains solari each time he takes his reveal turn.',
+        params: { gains: { solari: 1 } }, // VERIFY amount
+      },
+    ],
   },
   baronHarkonnen: {
     id: 'baronHarkonnen',
     name: 'Baron Vladimir Harkonnen',
     signetGains: { intrigueCards: 1 },
     signetCost: {},
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — extra intrigue synergy per the leader sheet (config TODO).',
+    passives: [
+      {
+        id: 'baron-reveal-scheme',
+        hook: 'onReveal',
+        summary: 'Never short of a scheme: draws an intrigue card when he reveals.',
+        params: { gains: { intrigueCards: 1 } }, // VERIFY trigger/amount
+      },
+    ],
   },
   glossuRabban: {
     id: 'glossuRabban',
     name: 'Glossu "The Beast" Rabban',
     signetGains: { troops: 1 },
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — aggression bonus per the leader sheet (config TODO).',
+    passives: [
+      {
+        id: 'rabban-brute-force',
+        hook: 'combatStrength',
+        summary: 'Sheer brutality: adds fixed strength to any conflict he commits troops to.',
+        params: { strength: 2 }, // VERIFY amount / conditions
+      },
+    ],
   },
   arianaThorvald: {
     id: 'arianaThorvald',
     name: 'Countess Ariana Thorvald',
     signetGains: { spice: 1 },
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — spice-harvest synergy per the leader sheet (config TODO).',
+    passives: [
+      {
+        id: 'ariana-desert-harvest',
+        hook: 'onAgentPlaced',
+        summary: 'At home in the deep desert: gains extra spice when sending an agent into the sands.',
+        params: { group: 'desert', gains: { spice: 1 } }, // VERIFY amount
+      },
+    ],
   },
   memnonThorvald: {
     id: 'memnonThorvald',
     name: 'Earl Memnon Thorvald',
     signetGains: { troops: 1 },
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — landsraad synergy per the leader sheet (config TODO).',
+    passives: [
+      {
+        id: 'memnon-landsraad-favor',
+        hook: 'onAgentPlaced',
+        summary: 'Works the noble houses: gains coin when sending an agent to a Landsraad space.',
+        params: { group: 'landsraad', gains: { solari: 1 } }, // VERIFY amount
+      },
+    ],
   },
   helenaRichese: {
     id: 'helenaRichese',
     name: 'Helena Richese',
     signetGains: { solari: 1, drawCards: 1 },
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — city placement advantage per the leader sheet (config TODO).',
+    passives: [
+      {
+        id: 'helena-city-holdings',
+        hook: 'onAgentPlaced',
+        summary: 'Trades on her city holdings: gains coin when sending an agent to a city space.',
+        params: { group: 'city', gains: { solari: 1 } }, // VERIFY amount
+      },
+    ],
   },
   ilbanRichese: {
     id: 'ilbanRichese',
     name: 'Count Ilban Richese',
     signetGains: { solari: 1 },
-    passiveNote: 'PASSIVE NOT YET IMPLEMENTED — manufacturing bonus per the leader sheet (config TODO).',
+    passives: [
+      {
+        id: 'ilban-manufacturing',
+        hook: 'onRoundStart',
+        summary: 'Steady manufacturing revenue: collects coin at the start of each round.',
+        params: { gains: { solari: 1 } }, // VERIFY amount
+      },
+    ],
   },
 };
 

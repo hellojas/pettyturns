@@ -42,7 +42,7 @@ src/imperium/            ← THE GAME (Dune: Imperium)
     visibility.ts        getVisibleImperiumState
 src/lib/impStore.ts      Zustand hotseat store (localStorage 'imperium:*')
 src/pages/, src/components/Imp*.tsx   Imperium UI at routes / /new /game/:id
-src/tests/imperium/      44 engine tests (helpers.ts has makeImp/setHand/patch/
+src/tests/imperium/      54 engine tests (helpers.ts has makeImp/setHand/patch/
                          endRoundQuietly — endRoundQuietly plays exactly ONE round)
 
 src/game/ + src/classic/ ← classic 1979 game engine + UI (frozen, keep passing)
@@ -53,7 +53,7 @@ ARCHITECTURE.md          layer diagram + invariants (written for classic; the
 
 ## Commands
 
-`npm test` (126 tests, all passing) · `npx tsc --noEmit` (clean) ·
+`npm test` (136 tests, all passing) · `npx tsc --noEmit` (clean) ·
 `npm run dev` · `npm run build`. Browser check: Playwright via
 `playwright-core` + executablePath `/opt/pw-browsers/chromium`, args
 `['--no-sandbox']` (see git history for a drive script example).
@@ -73,11 +73,18 @@ inside `impApply`.
 
 ## Known gaps = the next steps (in priority order)
 
-1. **Leader passives.** Only signet abilities work (fire when the signet
-   starting card is played). Each leader's passive is a `passiveNote` TODO in
-   `data/leaders.ts`. Design: add engine hook points (e.g. onAgentPlaced,
-   onReveal, onCombatResolve, placement-rule overrides) consumed from leader
-   config, mirroring how faction powers were data-driven in the classic game.
+1. **Leader passives.** DONE (data-driven, mirroring classic faction powers).
+   `types.ts` has `LeaderPassive { id, summary, hook, params }`; leaders carry
+   `passives[]` in `data/leaders.ts`. Four engine hooks are wired in
+   `engine.ts`: `combatStrength` (flat strength while committed),
+   `onReveal` (gains on the reveal turn), `onAgentPlaced` (gains when placing
+   an agent, optionally gated by space `group`/`spaceId`; troop grants feed the
+   deploy limit), and `onRoundStart` (recall-time income). All seven
+   machine-enforced leaders are covered; Paul Atreides' deck-peek stays a
+   `passiveNote` because it needs the choice-prompt system (gap #3). Every
+   passive number is a VERIFY placeholder. Tests: `leaderPassives.test.ts`.
+   Next: add more hooks as cards demand (e.g. onAcquireCard, placement-rule
+   overrides), and machine-enforce Paul once pending decisions land.
 2. **Full card pool.** `cards.ts` imperium deck, `intrigue.ts`, and
    `conflicts.ts` are representative subsets. Extend entry-by-entry (owner
    verifies values). The effects DSL (`Gains`/`Costs` in types.ts) covers most

@@ -9,6 +9,14 @@ const FACTION_SHORT: Record<string, string> = {
   fremen: 'FRM',
 };
 
+/** Hover text for a leader: its passive summaries plus any note-only ability. */
+function leaderTooltip(leaderId: string): string {
+  const leader = IMP_LEADERS[leaderId];
+  const lines = (leader.passives ?? []).map((pw) => `• ${pw.summary}`);
+  if (leader.passiveNote) lines.push(`• ${leader.passiveNote}`);
+  return lines.length ? `${leader.name}\n${lines.join('\n')}` : leader.name;
+}
+
 /** All player mats: resources, VP, influence tracks, garrison, seat switcher. */
 export default function ImpPlayerMat({
   view,
@@ -39,7 +47,9 @@ export default function ImpPlayerMat({
             <div className="flex items-center gap-2">
               <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: PLAYER_DOTS[idx] }} />
               <span className="font-semibold text-sand-200 truncate">{p.name}</span>
-              <span className="text-sand-100/40 truncate">{IMP_LEADERS[p.leaderId].name}</span>
+              <span className="text-sand-100/40 truncate" title={leaderTooltip(p.leaderId)}>
+                {IMP_LEADERS[p.leaderId].name}
+              </span>
               {pid === view.firstPlayer && <span title="first player">▸</span>}
               {isTurn && <span className="ml-auto text-amber-400 font-semibold shrink-0">● to act</span>}
             </div>

@@ -62,7 +62,8 @@ describe('round flow and endgame', () => {
       hidden: { ...s.hidden, p2: { ...s.hidden.p2, intrigue: [endgameId] } },
     };
     s = patch(s, 'p1', { vp: 3 });
-    s = patch(s, 'p2', { vp: 3 });
+    // give p2 a leader with no reveal-time draw so only the endgame intrigue scores
+    s = patch(s, 'p2', { vp: 3, leaderId: 'paulAtreides' });
     s = endRoundQuietly(s);
     expect(s.phase).toBe('finished');
     expect(s.players.p2.vp).toBe(4);

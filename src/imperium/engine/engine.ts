@@ -5,12 +5,15 @@ import { IMP_INTRIGUE_DEFS } from '../data/intrigue';
 import { IMP_LEADERS } from '../data/leaders';
 import { IMP_SPACES, IMP_SPACE_LIST, MAKER_SPACE_IDS, CONTROL_SPACE_IDS } from '../data/spaces';
 import type {
+  BoardSpaceDef,
   BuyCardAction,
   CardId,
   ImpAction,
   ImpAllowedAction,
   ImpGameState,
   ImpValidation,
+  LeaderPassive,
+  LeaderPassiveHook,
   PlayCardAction,
   PlayIntrigueAction,
   PlayerId,
@@ -64,11 +67,38 @@ function combatParticipants(state: ImpGameState): PlayerId[] {
   return orderFromFirst(state).filter((pid) => state.players[pid].inConflict > 0);
 }
 
+/** The leader's passives that fire at a given engine hook (empty if none). */
+function leaderPassives(state: ImpGameState, pid: PlayerId, hook: LeaderPassiveHook): LeaderPassive[] {
+  const leader = IMP_LEADERS[state.players[pid].leaderId];
+  return (leader?.passives ?? []).filter((pw) => pw.hook === hook);
+}
+
+/** Does an `onAgentPlaced` passive apply to this space? */
+function passiveMatchesSpace(passive: LeaderPassive, space: BoardSpaceDef): boolean {
+  const { group, spaceId } = passive.params ?? {};
+  if (group && space.group !== group) return false;
+  if (spaceId && space.id !== spaceId) return false;
+  return true;
+}
+
+/** Troops an `onAgentPlaced` passive would recruit at this space (for deploy limits). */
+function placementPassiveTroops(state: ImpGameState, pid: PlayerId, space: BoardSpaceDef): number {
+  return leaderPassives(state, pid, 'onAgentPlaced')
+    .filter((pw) => passiveMatchesSpace(pw, space))
+    .reduce((n, pw) => n + (pw.params?.gains?.troops ?? 0), 0);
+}
+
 export function combatStrength(state: ImpGameState, pid: PlayerId): number {
   const p = state.players[pid];
-  return (
-    p.inConflict * IMP_CONSTANTS.strengthPerTroop + p.swords * IMP_CONSTANTS.strengthPerSword
-  );
+  let strength =
+    p.inConflict * IMP_CONSTANTS.strengthPerTroop + p.swords * IMP_CONSTANTS.strengthPerSword;
+  // Leader passives contribute strength only while the leader is fighting.
+  if (p.inConflict > 0) {
+    for (const passive of leaderPassives(state, pid, 'combatStrength')) {
+      strength += passive.params?.strength ?? 0;
+    }
+  }
+  return strength;
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +142,10 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
       if (!cardCost.ok) return impFail('cannot-afford', `You cannot pay that card's cost (${cardCost.reason}).`);
       if (action.deploy && action.deploy > 0) {
         if (!space.combat) return impFail('no-combat', 'That space does not open the conflict.');
-        const gainsTroops = (space.gains?.troops ?? 0) + (def.agentGains?.troops ?? 0);
+        const gainsTroops =
+          (space.gains?.troops ?? 0) +
+          (def.agentGains?.troops ?? 0) +
+          placementPassiveTroops(state, pid, space);
         const limit = IMP_CONSTANTS.baseDeployLimit + gainsTroops;
         if (action.deploy > limit)
           return impFail('deploy-limit', `You may deploy at most ${limit} troops with this turn.`);
@@ -389,6 +422,19 @@ function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameStat
     next = addInfluence(next, pid, space.influenceGain, 1);
   }
 
+  // leader passive: fires when this agent is placed (optionally on a group/space)
+  for (const passive of leaderPassives(next, pid, 'onAgentPlaced')) {
+    if (!passiveMatchesSpace(passive, space)) continue;
+    const r = applyGains(next, pid, passive.params?.gains, ctx);
+    next = r.state;
+    troopsRecruited += r.troopsRecruited;
+    next = impLog(next, {
+      event: 'leader.passive',
+      text: `${next.players[pid].name}'s leader ability triggers at ${space.name}.`,
+      data: { passiveId: passive.id },
+    });
+  }
+
   // deployment
   if (action.deploy && action.deploy > 0) {
     const p = next.players[pid];
@@ -432,6 +478,18 @@ function applyReveal(state: ImpGameState, pid: PlayerId, at?: string): ImpGameSt
   if (next.players[pid].hasCouncilSeat) {
     next = { ...next, players: { ...next.players, [pid]: { ...next.players[pid], persuasion: next.players[pid].persuasion + 2 } } };
   }
+
+  // leader passive: fires on the reveal turn
+  for (const passive of leaderPassives(next, pid, 'onReveal')) {
+    if (revealedIds.length < (passive.params?.minRevealedCards ?? 0)) continue;
+    next = applyGains(next, pid, passive.params?.gains).state;
+    next = impLog(next, {
+      event: 'leader.passive',
+      text: `${next.players[pid].name}'s leader ability triggers on reveal.`,
+      data: { passiveId: passive.id },
+    });
+  }
+
   const p = next.players[pid];
   return impLog(next, {
     event: 'turn.revealed',
@@ -670,6 +728,18 @@ function makersAndRecall(state: ImpGameState): ImpGameState {
       next = impLog(next, {
         event: 'control.bonus',
         text: `${next.players[controller].name} collects the ${IMP_SPACES[spaceId].name} control bonus.`,
+      });
+    }
+  }
+
+  // leader passives: per-round passive income (in seat order from the first player)
+  for (const pid of orderFromFirst(next)) {
+    for (const passive of leaderPassives(next, pid, 'onRoundStart')) {
+      next = applyGains(next, pid, passive.params?.gains).state;
+      next = impLog(next, {
+        event: 'leader.passive',
+        text: `${next.players[pid].name}'s leader ability grants a round-start bonus.`,
+        data: { passiveId: passive.id },
       });
     }
   }

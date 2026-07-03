@@ -137,14 +137,60 @@ export interface ConflictDef {
   rewards: ConflictReward[];
 }
 
+/**
+ * Which engine hook consults a leader passive. Mirrors the classic game's
+ * data-driven faction powers: each passive is a machine-readable switch fired
+ * at exactly one rule point, so the engine stays generic and the set is
+ * editable in config.
+ *
+ * - `onReveal`        fires during a player's reveal turn (after reveal gains).
+ * - `onAgentPlaced`   fires when the leader places an agent (optionally on a
+ *                     given space group / space).
+ * - `combatStrength`  contributes flat strength while the leader has troops in
+ *                     the current conflict.
+ * - `onRoundStart`    fires at recall, once per new round (control-bonus style
+ *                     passive income).
+ */
+export type LeaderPassiveHook = 'onReveal' | 'onAgentPlaced' | 'combatStrength' | 'onRoundStart';
+
+export interface LeaderPassiveParams {
+  /** Gains granted by the hook (onReveal / onAgentPlaced / onRoundStart). */
+  gains?: Gains;
+  /** onAgentPlaced only: restrict to this space group (omit = any space). */
+  group?: SpaceGroup;
+  /** onAgentPlaced only: restrict to this specific space (omit = any space). */
+  spaceId?: SpaceId;
+  /** combatStrength only: flat strength added while committed to the conflict. */
+  strength?: number;
+  /** onReveal only: require at least this many cards revealed to fire. */
+  minRevealedCards?: number;
+}
+
+export interface LeaderPassive {
+  id: string;
+  /** Original-wording summary (never rulebook prose). */
+  summary: string;
+  hook: LeaderPassiveHook;
+  /** Parameters interpreted by the hook. Every value is VERIFY. */
+  params?: LeaderPassiveParams;
+}
+
 export interface ImpLeaderDef {
   id: LeaderId;
   name: string;
   /** Signet ring ability as data (played via the signet starting card). */
   signetGains: Gains;
   signetCost?: Costs;
-  /** Passive ability — original-wording note; complex passives are config TODOs. */
-  passiveNote: string;
+  /**
+   * Machine-enforced passive abilities, consumed at named engine hooks. Every
+   * value is VERIFY; original-wording summaries only.
+   */
+  passives?: LeaderPassive[];
+  /**
+   * Original-wording note for any passive not yet machine-enforced (e.g. one
+   * that needs a player choice prompt). Kept alongside `passives`.
+   */
+  passiveNote?: string;
 }
 
 // ---------------------------------------------------------------------------
