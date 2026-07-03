@@ -1,0 +1,346 @@
+import type { ImpCardDef, CardDefId } from '../types';
+
+/**
+ * Card pool — EDITABLE CONFIG.
+ *
+ * All entries carry only machine-readable mechanics (costs, icons, numeric
+ * effects) plus a short name; there is intentionally no card text here.
+ * VERIFY every entry against the cards in the copy you own — especially the
+ * imperium deck, which ships here as a representative subset you can extend
+ * card-by-card in this file (add a def with `source: 'imperium'` and a count).
+ */
+
+const ALL_ICONS: ImpCardDef['icons'] = [
+  'emperor',
+  'spacingGuild',
+  'beneGesserit',
+  'fremen',
+  'landsraad',
+  'city',
+  'spiceTrade',
+];
+const FACTION_ICONS: ImpCardDef['icons'] = ['emperor', 'spacingGuild', 'beneGesserit', 'fremen'];
+
+export const IMP_CARD_DEFS: Record<CardDefId, ImpCardDef> = {
+  // --------------------------------------------------------------------
+  // Starting deck (10 per player). VERIFY icons and reveal values.
+  // --------------------------------------------------------------------
+  convincingArgument: {
+    id: 'convincingArgument',
+    name: 'Convincing Argument',
+    cost: 0,
+    count: 0,
+    icons: [], // reveal-only card
+    revealGains: { persuasion: 2 },
+    source: 'starting',
+  },
+  dagger: {
+    id: 'dagger',
+    name: 'Dagger',
+    cost: 0,
+    count: 0,
+    icons: ['landsraad'],
+    revealGains: { swords: 1 },
+    source: 'starting',
+  },
+  desertHomeworld: {
+    id: 'desertHomeworld',
+    name: 'Dune, the Desert Planet',
+    cost: 0,
+    count: 0,
+    icons: ['spiceTrade'],
+    revealGains: { persuasion: 1 },
+    source: 'starting',
+  },
+  diplomacy: {
+    id: 'diplomacy',
+    name: 'Diplomacy',
+    cost: 0,
+    count: 0,
+    icons: FACTION_ICONS,
+    revealGains: { persuasion: 1 },
+    source: 'starting',
+  },
+  reconnaissance: {
+    id: 'reconnaissance',
+    name: 'Reconnaissance',
+    cost: 0,
+    count: 0,
+    icons: ['city'],
+    revealGains: { persuasion: 1 },
+    source: 'starting',
+  },
+  seekAllies: {
+    id: 'seekAllies',
+    name: 'Seek Allies',
+    cost: 0,
+    count: 0,
+    icons: FACTION_ICONS,
+    trashAfterAgent: true, // leaves the deck after its first agent use
+    source: 'starting',
+  },
+  signetRing: {
+    id: 'signetRing',
+    name: 'Signet Ring',
+    cost: 0,
+    count: 0,
+    icons: ['landsraad', 'city', 'spiceTrade'],
+    signet: true, // plays the leader's signet ability
+    revealGains: { persuasion: 1 },
+    source: 'starting',
+  },
+
+  /** Copies of each starting card per player. */
+  // (see STARTING_DECK below)
+
+  // --------------------------------------------------------------------
+  // Reserve (always purchasable / granted). VERIFY.
+  // --------------------------------------------------------------------
+  foldspace: {
+    id: 'foldspace',
+    name: 'Foldspace',
+    cost: 0, // acquired via the Foldspace space, not bought
+    count: 0,
+    icons: ALL_ICONS,
+    agentGains: { drawCards: 1 },
+    trashAfterAgent: true,
+    source: 'reserve',
+  },
+  arrakisLiaison: {
+    id: 'arrakisLiaison',
+    name: 'Arrakis Liaison',
+    cost: 2,
+    count: 0,
+    icons: ['city'],
+    revealGains: { persuasion: 2 },
+    source: 'reserve',
+  },
+  theSpiceMustFlow: {
+    id: 'theSpiceMustFlow',
+    name: 'The Spice Must Flow',
+    cost: 9,
+    count: 0,
+    icons: [],
+    acquireGains: { vp: 1 },
+    revealGains: { spice: 1 },
+    source: 'reserve',
+  },
+
+  // --------------------------------------------------------------------
+  // Imperium deck — representative subset, extend freely. ALL VERIFY.
+  // --------------------------------------------------------------------
+  sardaukarLegion: {
+    id: 'sardaukarLegion',
+    name: 'Sardaukar Legion',
+    cost: 5,
+    count: 2,
+    icons: ['emperor', 'landsraad'],
+    agentGains: { troops: 2 },
+    revealGains: { swords: 3 },
+    source: 'imperium',
+  },
+  imperialSpy: {
+    id: 'imperialSpy',
+    name: 'Imperial Spy',
+    cost: 2,
+    count: 2,
+    icons: ['emperor'],
+    agentGains: { intrigueCards: 1 },
+    revealGains: { swords: 1 },
+    source: 'imperium',
+  },
+  guildAdministrator: {
+    id: 'guildAdministrator',
+    name: 'Guild Administrator',
+    cost: 2,
+    count: 2,
+    icons: ['spacingGuild'],
+    agentGains: { trashCards: 1 },
+    revealGains: { persuasion: 1 },
+    source: 'imperium',
+  },
+  guildBankers: {
+    id: 'guildBankers',
+    name: 'Guild Bankers',
+    cost: 3,
+    count: 1,
+    icons: ['emperor', 'spacingGuild', 'landsraad'],
+    revealGains: { persuasion: 2 },
+    source: 'imperium',
+  },
+  spaceTravel: {
+    id: 'spaceTravel',
+    name: 'Space Travel',
+    cost: 3,
+    count: 2,
+    icons: ['spacingGuild'],
+    agentGains: { solari: 2 },
+    revealGains: { persuasion: 2 },
+    source: 'imperium',
+  },
+  beneGesseritSister: {
+    id: 'beneGesseritSister',
+    name: 'Bene Gesserit Sister',
+    cost: 3,
+    count: 2,
+    icons: ['beneGesserit', 'landsraad', 'city'],
+    agentGains: { drawCards: 1 },
+    revealGains: { persuasion: 1, swords: 1 },
+    source: 'imperium',
+  },
+  missionariaProtectiva: {
+    id: 'missionariaProtectiva',
+    name: 'Missionaria Protectiva',
+    cost: 1,
+    count: 2,
+    icons: ['beneGesserit', 'city'],
+    agentGains: { anyInfluence: 1 },
+    revealGains: { persuasion: 1 },
+    source: 'imperium',
+  },
+  fremenCamp: {
+    id: 'fremenCamp',
+    name: 'Fremen Camp',
+    cost: 4,
+    count: 2,
+    icons: ['fremen', 'spiceTrade'],
+    agentGains: { troops: 2 },
+    revealGains: { persuasion: 1, swords: 1 },
+    source: 'imperium',
+  },
+  fedaykinDeathCommando: {
+    id: 'fedaykinDeathCommando',
+    name: 'Fedaykin Death Commando',
+    cost: 3,
+    count: 2,
+    icons: ['fremen', 'city'],
+    revealGains: { swords: 3 },
+    source: 'imperium',
+  },
+  crysknife: {
+    id: 'crysknife',
+    name: 'Crysknife',
+    cost: 3,
+    count: 1,
+    icons: ['fremen', 'city'],
+    agentGains: { water: 1 },
+    agentCost: { influenceRequired: { faction: 'fremen', min: 1 } },
+    revealGains: { swords: 2 },
+    source: 'imperium',
+  },
+  chani: {
+    id: 'chani',
+    name: 'Chani',
+    cost: 5,
+    count: 1,
+    icons: ['fremen', 'city', 'spiceTrade'],
+    agentGains: { water: 1 },
+    revealGains: { persuasion: 2 },
+    source: 'imperium',
+  },
+  stilgar: {
+    id: 'stilgar',
+    name: 'Stilgar',
+    cost: 5,
+    count: 1,
+    icons: ['fremen', 'city', 'spiceTrade'],
+    agentGains: { troops: 2, influence: { fremen: 1 } },
+    revealGains: { swords: 4 },
+    source: 'imperium',
+  },
+  smugglersThopter: {
+    id: 'smugglersThopter',
+    name: "Smuggler's Thopter",
+    cost: 4,
+    count: 2,
+    icons: ['spacingGuild', 'spiceTrade'],
+    agentGains: { spice: 1 },
+    revealGains: { persuasion: 1, swords: 1 },
+    source: 'imperium',
+  },
+  spiceSmugglers: {
+    id: 'spiceSmugglers',
+    name: 'Spice Smugglers',
+    cost: 2,
+    count: 2,
+    icons: ['spiceTrade', 'landsraad'],
+    agentGains: { solari: 1 },
+    revealGains: { persuasion: 1 },
+    source: 'imperium',
+  },
+  choamDirectorship: {
+    id: 'choamDirectorship',
+    name: 'CHOAM Directorship',
+    cost: 8,
+    count: 1,
+    icons: ['landsraad', 'spiceTrade'],
+    acquireGains: { influence: { emperor: 1, spacingGuild: 1, beneGesserit: 1, fremen: 1 } },
+    revealGains: { solari: 3 },
+    source: 'imperium',
+  },
+  duncanIdaho: {
+    id: 'duncanIdaho',
+    name: 'Duncan Idaho',
+    cost: 4,
+    count: 1,
+    icons: ['landsraad', 'city'],
+    agentGains: { troops: 1, water: 1 },
+    revealGains: { swords: 2, persuasion: 1 },
+    source: 'imperium',
+  },
+  thufirHawat: {
+    id: 'thufirHawat',
+    name: 'Thufir Hawat',
+    cost: 5,
+    count: 1,
+    icons: ALL_ICONS,
+    agentGains: { drawCards: 1, intrigueCards: 1 },
+    revealGains: { persuasion: 1, swords: 1 },
+    source: 'imperium',
+  },
+  ladyJessica: {
+    id: 'ladyJessica',
+    name: 'Lady Jessica',
+    cost: 7,
+    count: 1,
+    icons: ['beneGesserit', 'landsraad', 'city'],
+    agentGains: { anyInfluence: 1, drawCards: 1 },
+    revealGains: { persuasion: 3, swords: 1 },
+    source: 'imperium',
+  },
+  gurneyHalleck: {
+    id: 'gurneyHalleck',
+    name: 'Gurney Halleck',
+    cost: 6,
+    count: 1,
+    icons: ['landsraad', 'city'],
+    agentGains: { troops: 2 },
+    revealGains: { swords: 3, persuasion: 1 },
+    source: 'imperium',
+  },
+  otherMemory: {
+    id: 'otherMemory',
+    name: 'Other Memory',
+    cost: 4,
+    count: 2,
+    icons: ['beneGesserit'],
+    agentGains: { drawCards: 2 },
+    revealGains: { persuasion: 1 },
+    source: 'imperium',
+  },
+};
+
+/** Each player's starting deck: defId → copies. VERIFY. */
+export const STARTING_DECK: Array<{ defId: CardDefId; copies: number }> = [
+  { defId: 'convincingArgument', copies: 2 },
+  { defId: 'dagger', copies: 2 },
+  { defId: 'desertHomeworld', copies: 2 },
+  { defId: 'diplomacy', copies: 1 },
+  { defId: 'reconnaissance', copies: 1 },
+  { defId: 'seekAllies', copies: 1 },
+  { defId: 'signetRing', copies: 1 },
+];
+
+export const RESERVE_DEF_IDS: CardDefId[] = ['foldspace', 'arrakisLiaison', 'theSpiceMustFlow'];
+
+export const IMPERIUM_DECK_DEFS = Object.values(IMP_CARD_DEFS).filter((d) => d.source === 'imperium');

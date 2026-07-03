@@ -1,19 +1,27 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import LobbyPanel, { type SeatDraft } from '../components/LobbyPanel';
-import { useGameStore } from '../lib/store';
+import { IMP_LEADER_LIST } from '../imperium/data/leaders';
+import { useImpStore } from '../lib/impStore';
 
-/** Game creation: 2–6 seats, unique factions, optional seed for reproducibility. */
+interface SeatDraft {
+  name: string;
+  leaderId: string;
+}
+
+/** Game creation: 2–4 seats, unique leaders, optional seed. */
 export default function NewGame() {
   const navigate = useNavigate();
-  const newGame = useGameStore((s) => s.newGame);
+  const newGame = useImpStore((s) => s.newGame);
   const [seats, setSeats] = useState<SeatDraft[]>([
-    { name: '', factionId: 'atreides' },
-    { name: '', factionId: 'harkonnen' },
+    { name: '', leaderId: 'paulAtreides' },
+    { name: '', leaderId: 'baronHarkonnen' },
   ]);
   const [seed, setSeed] = useState('');
 
-  const ready = seats.length >= 2 && seats.every((s) => s.factionId);
+  const taken = seats.map((s) => s.leaderId);
+  const ready = seats.length >= 2 && seats.every((s) => s.leaderId) && new Set(taken).size === taken.length;
+  const update = (i: number, patch: Partial<SeatDraft>) =>
+    setSeats(seats.map((s, j) => (i === j ? { ...s, ...patch } : s)));
 
   return (
     <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-start justify-center p-8">
@@ -24,7 +32,44 @@ export default function NewGame() {
             ← back
           </Link>
         </header>
-        <LobbyPanel seats={seats} onChange={setSeats} />
+        <div className="space-y-2">
+          {seats.map((seat, i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <span className="text-xs text-sand-100/40 w-6">P{i + 1}</span>
+              <input
+                className="input flex-1"
+                placeholder={`Player ${i + 1}`}
+                value={seat.name}
+                onChange={(e) => update(i, { name: e.target.value })}
+              />
+              <select className="input" value={seat.leaderId} onChange={(e) => update(i, { leaderId: e.target.value })}>
+                {IMP_LEADER_LIST.map((l) => (
+                  <option key={l.id} value={l.id} disabled={taken.includes(l.id) && l.id !== seat.leaderId}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+              {seats.length > 2 && (
+                <button className="btn-secondary" onClick={() => setSeats(seats.filter((_, j) => j !== i))}>
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          {seats.length < 4 && (
+            <button
+              className="btn-secondary"
+              onClick={() =>
+                setSeats([
+                  ...seats,
+                  { name: '', leaderId: IMP_LEADER_LIST.find((l) => !taken.includes(l.id))?.id ?? '' },
+                ])
+              }
+            >
+              + Add seat
+            </button>
+          )}
+        </div>
         <div className="flex gap-2 items-center text-sm">
           <span className="text-sand-100/50">Seed (optional)</span>
           <input
@@ -39,7 +84,7 @@ export default function NewGame() {
           disabled={!ready}
           onClick={() => {
             const gameId = newGame(
-              seats.map((s) => ({ name: s.name, factionId: s.factionId })),
+              seats.map((s) => ({ name: s.name, leaderId: s.leaderId })),
               seed ? Number(seed) : undefined,
             );
             navigate(`/game/${gameId}`);

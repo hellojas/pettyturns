@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildBoardCells } from '../lib/boardGeometry';
+import { buildBoardCells } from '../classic/lib/boardGeometry';
 import { TERRITORIES, TERRITORY_LIST } from '../game/data/territories';
 
 describe('board geometry', () => {
