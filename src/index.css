@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .panel {
+    @apply bg-dusk-800 border border-sand-900/60 rounded-lg p-3;
+  }
+  .panel-title {
+    @apply text-xs uppercase tracking-wide text-sand-100/50 mb-2;
+  }
+  .btn {
+    @apply bg-sand-500 text-dusk-900 font-semibold text-sm px-3 py-1.5 rounded
+      hover:bg-sand-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors;
+  }
+  .btn-secondary {
+    @apply bg-dusk-900 text-sand-200 text-sm px-3 py-1.5 rounded border border-sand-800
+      hover:border-sand-600 disabled:opacity-40 transition-colors;
+  }
+  .input {
+    @apply bg-dusk-900 text-sand-100 text-sm rounded border border-sand-800 px-2 py-1
+      focus:outline-none focus:border-sand-500;
+  }
+}
