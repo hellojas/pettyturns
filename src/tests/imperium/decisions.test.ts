@@ -128,9 +128,11 @@ describe('pending decisions', () => {
       expect(s.round).toBe(1); // makers/recall have NOT run yet
 
       // resolving onto emperor crosses influence level 2 → +1 VP → hits the target
+      // (the reward also handed p1 intrigue cards; any endgame one among them
+      // scores at final scoring, so assert the target is met, not an exact total)
       s = apply(s, { type: 'imp/resolveDecision', playerId: 'p1', decisionId: s.pendingDecisions[0].id, faction: 'emperor' });
       expect(s.players.p1.influence.emperor).toBe(2);
-      expect(s.players.p1.vp).toBe(IMP_CONSTANTS.vpTarget);
+      expect(s.players.p1.vp).toBeGreaterThanOrEqual(IMP_CONSTANTS.vpTarget);
       expect(s.phase).toBe('finished');
       expect(s.winner).toBe('p1');
     });

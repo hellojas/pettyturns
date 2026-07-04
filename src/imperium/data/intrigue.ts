@@ -39,6 +39,35 @@ export const IMP_INTRIGUE_DEFS: Record<IntrigueDefId, IntrigueDef> = {
   smugglersPayoff: { id: 'smugglersPayoff', name: "Smuggler's Payoff", kind: 'plot', count: 2, cost: { spice: 1 }, gains: { solari: 4 } },
 
   quietTriumph: { id: 'quietTriumph', name: 'Quiet Triumph', kind: 'endgame', count: 1, gains: { vp: 1 } },
+
+  // --- Conditional endgame cards (all VERIFY: names/metrics/thresholds are
+  // placeholders modeled after the real deck's conditional scorers). Each scores
+  // its `gains.vp` only when its `endgameCondition` is met. ---
+  dynasticReach: {
+    id: 'dynasticReach', name: 'Dynastic Reach', kind: 'endgame', count: 1, gains: { vp: 2 },
+    // Scores only for the player holding the most control markers (ties shared).
+    endgameCondition: { metric: 'controlSpaces', mostAmong: true },
+  },
+  warChest: {
+    id: 'warChest', name: 'War Chest', kind: 'endgame', count: 1, gains: { vp: 1 },
+    // Scores if you have amassed at least this much solari.
+    endgameCondition: { metric: 'solari', atLeast: 7 },
+  },
+  spyNetwork: {
+    id: 'spyNetwork', name: 'Spy Network', kind: 'endgame', count: 1, gains: { vp: 1 },
+    // One VP per pair of intrigue cards still in hand.
+    endgameCondition: { metric: 'intrigueCards', per: 2 },
+  },
+  imperialFavor: {
+    id: 'imperialFavor', name: 'Imperial Favor', kind: 'endgame', count: 1, gains: { vp: 1 },
+    // Scores with strong standing on the Emperor track.
+    endgameCondition: { metric: 'influence', faction: 'emperor', atLeast: 4 },
+  },
+  standingArmy: {
+    id: 'standingArmy', name: 'Standing Army', kind: 'endgame', count: 1, gains: { vp: 1 },
+    // One VP per three troops still on the board at game end.
+    endgameCondition: { metric: 'troops', per: 3 },
+  },
 };
 
 export const IMP_INTRIGUE_LIST = Object.values(IMP_INTRIGUE_DEFS);

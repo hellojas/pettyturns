@@ -23,6 +23,9 @@ import { makeImp } from './helpers';
  */
 
 const VALID_ICONS = new Set([...IMP_FACTIONS, 'landsraad', 'city', 'spiceTrade']);
+const VALID_METRICS = new Set([
+  'influence', 'controlSpaces', 'intrigueCards', 'alliances', 'spice', 'solari', 'water', 'troops',
+]);
 const FACTION_SET = new Set<string>(IMP_FACTIONS);
 const CONTROL_SET = new Set(CONTROL_SPACE_IDS);
 
@@ -134,6 +137,20 @@ describe('intrigue pool composition', () => {
       }
       if (def.kind === 'endgame') {
         expect(def.gains?.vp ?? 0, `${def.id} endgame card should score VP`).toBeGreaterThanOrEqual(1);
+      }
+      // A condition only belongs on an endgame card, and its metric must be valid.
+      if (def.endgameCondition) {
+        expect(def.kind, `${def.id}: endgameCondition only on endgame cards`).toBe('endgame');
+        const cond = def.endgameCondition;
+        expect(VALID_METRICS.has(cond.metric), `${def.id}: metric '${cond.metric}'`).toBe(true);
+        if (cond.metric === 'influence') {
+          expect(cond.faction, `${def.id}: influence metric needs a faction`).toBeTruthy();
+          expect(FACTION_SET.has(cond.faction!), `${def.id}: metric faction '${cond.faction}'`).toBe(true);
+        }
+        // Exactly one scoring shape (mostAmong / per / atLeast), or none (flat).
+        const shapes = [cond.mostAmong ? 1 : 0, cond.per !== undefined ? 1 : 0, cond.atLeast !== undefined ? 1 : 0];
+        expect(shapes.reduce((a, b) => a + b, 0), `${def.id}: one scoring shape`).toBeLessThanOrEqual(1);
+        if (cond.per !== undefined) expect(cond.per, `${def.id}: per > 0`).toBeGreaterThan(0);
       }
     }
   });

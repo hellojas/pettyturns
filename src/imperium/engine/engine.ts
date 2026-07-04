@@ -8,6 +8,7 @@ import type {
   BoardSpaceDef,
   BuyCardAction,
   CardId,
+  EndgameCondition,
   ImpAction,
   ImpAllowedAction,
   ImpFlowResume,
@@ -930,20 +931,73 @@ function makersAndRecall(state: ImpGameState): ImpGameState {
   return next;
 }
 
+/** Per-player value of an endgame metric, read purely from finished state. */
+function endgameMetricValue(state: ImpGameState, pid: PlayerId, cond: EndgameCondition): number {
+  const p = state.players[pid];
+  switch (cond.metric) {
+    case 'influence':
+      return cond.faction ? p.influence[cond.faction] : 0;
+    case 'controlSpaces':
+      return p.controls.length;
+    case 'intrigueCards':
+      return state.hidden[pid].intrigue.length;
+    case 'alliances':
+      return IMP_FACTIONS.filter((f) => state.alliances[f] === pid).length;
+    case 'spice':
+      return p.spice;
+    case 'solari':
+      return p.solari;
+    case 'water':
+      return p.water;
+    case 'troops':
+      return p.garrison + p.inConflict;
+  }
+}
+
+/**
+ * VP an endgame condition awards a player. Scoring shapes are mutually exclusive
+ * and checked in a fixed order: mostAmong → per → atLeast → unconditional.
+ */
+function endgameConditionVp(state: ImpGameState, pid: PlayerId, def: { gains?: { vp?: number }; endgameCondition?: EndgameCondition }): number {
+  const base = def.gains?.vp ?? 0;
+  const cond = def.endgameCondition;
+  if (!cond) return base;
+
+  const value = endgameMetricValue(state, pid, cond);
+  if (cond.mostAmong) {
+    const best = Math.max(...state.playerOrder.map((other) => endgameMetricValue(state, other, cond)));
+    return best > 0 && value === best ? base : 0;
+  }
+  if (cond.per && cond.per > 0) {
+    return Math.floor(value / cond.per) * base;
+  }
+  if (cond.atLeast !== undefined) {
+    return value >= cond.atLeast ? base : 0;
+  }
+  return base;
+}
+
 function finalScoring(state: ImpGameState): ImpGameState {
   let next = state;
 
-  // endgame intrigue scores automatically
+  // endgame intrigue scores automatically (conditions evaluated against the
+  // pre-scoring snapshot so every card reads the same board — VP awarded by one
+  // card never changes what another card measures)
+  const snapshot = next;
   for (const pid of next.playerOrder) {
     for (const intrigueId of next.hidden[pid].intrigue) {
       const def = IMP_INTRIGUE_DEFS[next.intrigueById[intrigueId].defId];
-      if (def.kind === 'endgame' && def.gains) {
-        next = impLog(next, {
-          event: 'intrigue.endgame',
-          text: `${next.players[pid].name} reveals an endgame intrigue: ${def.name}.`,
-        });
-        next = applyGains(next, pid, def.gains).state;
-      }
+      if (def.kind !== 'endgame') continue;
+      const vp = endgameConditionVp(snapshot, pid, def);
+      next = impLog(next, {
+        event: 'intrigue.endgame',
+        text:
+          vp > 0
+            ? `${next.players[pid].name} reveals an endgame intrigue: ${def.name} (+${vp} VP).`
+            : `${next.players[pid].name} reveals an endgame intrigue: ${def.name} (no VP).`,
+        data: { intrigueDefId: def.id, vp },
+      });
+      if (vp > 0) next = applyGains(next, pid, { vp }).state;
     }
   }
 

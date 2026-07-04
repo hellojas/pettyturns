@@ -115,6 +115,50 @@ export interface ImpCardDef {
 
 export type IntrigueKind = 'plot' | 'combat' | 'endgame';
 
+/**
+ * A per-player quantity measured at final scoring. Every metric is derived
+ * purely from the finished game state, so endgame conditions are replayable and
+ * order-independent.
+ *
+ * - `influence`      influence on `faction` (requires `faction`).
+ * - `controlSpaces`  number of control markers the player holds.
+ * - `intrigueCards`  intrigue cards still in the player's hand at scoring.
+ * - `alliances`      faction alliance tokens the player holds.
+ * - `spice`/`solari`/`water`  that resource on hand.
+ * - `troops`         troops on the board (garrison + committed to conflict).
+ */
+export type EndgameMetric =
+  | 'influence'
+  | 'controlSpaces'
+  | 'intrigueCards'
+  | 'alliances'
+  | 'spice'
+  | 'solari'
+  | 'water'
+  | 'troops';
+
+/**
+ * A data predicate that gates or scales an endgame intrigue card's VP. Real
+ * endgame cards rarely score a flat point — they reward a threshold, a per-unit
+ * count, or being the leader in some metric. Modeling them as data keeps the
+ * scorer generic; an endgame card with no condition scores its flat `gains.vp`.
+ *
+ * Exactly one scoring shape applies, checked in this order: `mostAmong`
+ * (leader-takes-it, ties shared) → `per` (VP once per N units) → `atLeast`
+ * (VP if the metric clears a threshold) → unconditional. Every value is VERIFY.
+ */
+export interface EndgameCondition {
+  metric: EndgameMetric;
+  /** Required for the `influence` metric: which faction track to read. */
+  faction?: ImpFactionId;
+  /** Award the card's VP only if the metric is at least this. */
+  atLeast?: number;
+  /** Award the card's VP once per this many units of the metric (floor division). */
+  per?: number;
+  /** Award only to the player(s) with the highest metric among all players (ties shared); a value of 0 never scores. */
+  mostAmong?: boolean;
+}
+
 export interface IntrigueDef {
   id: IntrigueDefId;
   name: string;
@@ -123,6 +167,11 @@ export interface IntrigueDef {
   /** plot: on your turn; combat: during combat (swords etc.); endgame: at scoring. */
   gains?: Gains;
   cost?: Costs;
+  /**
+   * endgame only: a condition that gates or scales `gains.vp` at final scoring.
+   * Omit for a flat, unconditional endgame card.
+   */
+  endgameCondition?: EndgameCondition;
 }
 
 export interface ConflictReward {

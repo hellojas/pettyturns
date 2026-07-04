@@ -9,13 +9,16 @@ and stays playable, but Imperium is the product now.
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
   fast-forwarded to match (both even after this handoff commit).
-- `npm test` → **299 passing** (22 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- `npm test` → **312 passing** (23 files). `npx tsc --noEmit` clean. `npm run build` clean.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
 - Card pool grown with a `deckComposition` guard test (see below); still VERIFY.
 - **Choice prompts / pending-decision system — DONE (was next step #1).**
   `anyInfluence`, optional `trashCards`, and Paul's foresight are now real
   player choices instead of auto-picks. See the section below. Also verified
   end-to-end in the browser (Decision panel renders, resolves, play continues).
+- **Endgame intrigue conditions — DONE (was next step #2).** Endgame intrigue
+  cards no longer all score a flat point; each may carry an `endgameCondition`
+  data predicate that gates or scales its `gains.vp`. See the section below.
 
 ### Pending-decision system (how it works)
 
@@ -43,6 +46,31 @@ and stays playable, but Imperium is the product now.
   Paul deckPeek case in `leaderPassives.test.ts`. Test helper `drainDecisions`
   auto-resolves with neutral defaults; `makeImp`'s default lineup deliberately
   keeps Paul out of the low seats (his reveal always raises a decision).
+
+### Endgame intrigue conditions (how it works)
+
+- `IntrigueDef.endgameCondition?: EndgameCondition` (types.ts) is an optional
+  data predicate on endgame-kind intrigue cards. No condition = the old flat
+  behavior (scores `gains.vp` unconditionally).
+- An `EndgameCondition` names a per-player `EndgameMetric` read purely from the
+  finished state (`influence`+`faction`, `controlSpaces`, `intrigueCards`,
+  `alliances`, `spice`/`solari`/`water`, `troops`=garrison+inConflict). One
+  scoring shape applies, checked in order: `mostAmong` (leader-takes-it, ties
+  shared, a 0 metric never scores) → `per` (VP once per N units, floored) →
+  `atLeast` (VP if metric ≥ threshold) → unconditional.
+- `finalScoring` in `engine.ts` evaluates every endgame card against a
+  **pre-scoring snapshot** so awarded VP never changes what another card
+  measures (order-independent). Logs `intrigue.endgame` with `{intrigueDefId,
+  vp}`. Helpers `endgameMetricValue` / `endgameConditionVp` are the scorer.
+- Config: five VERIFY placeholder conditional cards in `data/intrigue.ts`
+  (`dynasticReach`, `warChest`, `spyNetwork`, `imperialFavor`, `standingArmy`).
+  All values are placeholders — VERIFY metrics/thresholds against the owner's
+  copy; add more the same way (a card that doesn't fit a metric = add a metric
+  to `EndgameMetric` + a branch in `endgameMetricValue` + a guard/test).
+- The composition guard (`deckComposition.test.ts`) validates condition shape
+  (metric valid, influence needs a faction, ≤1 scoring shape, `per`>0). UI:
+  `ImpHand.tsx` shows each endgame card's scoring summary via `describeEndgame`.
+  Tests: `src/tests/imperium/endgameScoring.test.ts` (helper `giveIntrigue`).
 
 ## DEPLOY — GitHub Pages (user deploys this themselves)
 
@@ -168,11 +196,14 @@ owed) park a `flowResume` continuation via `settle`.
 1. **Async multiplayer.** Store is hotseat + localStorage. Seam: move
    authoritative state server-side (Supabase); clients send actions and receive
    their `getVisibleImperiumState` view. Engine needs no changes.
-2. **Endgame intrigue conditions.** Currently flat VP; real cards have
-   conditions — model as data predicates.
-3. **`onAgentPlaced` choice-driven passives.** The pending-decision plumbing now
+2. **`onAgentPlaced` choice-driven passives.** The pending-decision plumbing now
    supports this (a placement passive can enqueue a decision); no leader in the
    current config needs it yet, but the hook is ready.
+3. **More endgame conditions.** The `EndgameCondition` predicate system is done
+   (see the section above); keep adding real cards entry-by-entry — a new
+   condition kind = add an `EndgameMetric` + a branch in `endgameMetricValue`.
+
+   (Endgame intrigue conditions: DONE — see section above.)
 
 ## Environment notes
 

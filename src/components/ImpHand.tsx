@@ -18,6 +18,38 @@ function defOf(view: ImpVisibleState, cardId: string) {
   return IMP_CARD_DEFS[view.cardsById[cardId].defId];
 }
 
+const FACTION_SHORT: Record<string, string> = {
+  emperor: 'Emperor',
+  spacingGuild: 'Spacing Guild',
+  beneGesserit: 'Bene Gesserit',
+  fremen: 'Fremen',
+};
+
+const METRIC_LABEL: Record<string, string> = {
+  influence: 'influence',
+  controlSpaces: 'control markers',
+  intrigueCards: 'intrigue cards',
+  alliances: 'alliance tokens',
+  spice: 'spice',
+  solari: 'solari',
+  water: 'water',
+  troops: 'troops',
+};
+
+/** Original-wording summary of how an endgame intrigue card scores. */
+function describeEndgame(def: (typeof IMP_INTRIGUE_DEFS)[string]): string {
+  const vp = def.gains?.vp ?? 0;
+  const cond = def.endgameCondition;
+  if (!cond) return `Scores ${vp} VP`;
+  const metric = cond.metric === 'influence' && cond.faction
+    ? `${FACTION_SHORT[cond.faction]} influence`
+    : METRIC_LABEL[cond.metric];
+  if (cond.mostAmong) return `${vp} VP if you hold the most ${metric}`;
+  if (cond.per) return `${vp} VP per ${cond.per} ${metric}`;
+  if (cond.atLeast !== undefined) return `${vp} VP with ${cond.atLeast}+ ${metric}`;
+  return `Scores ${vp} VP`;
+}
+
 /**
  * The seated player's hand plus the staged agent play. Selecting a card arms
  * the board; once a space is chosen, choices (deploy / sell amount / faction)
@@ -154,7 +186,9 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
             return (
               <div key={intrigueId} className="flex items-center gap-2 py-0.5">
                 <span className="text-sand-200">{def.name}</span>
-                <span className="text-sand-100/40">{def.kind}</span>
+                <span className="text-sand-100/40">
+                  {def.kind === 'endgame' ? describeEndgame(def) : def.kind}
+                </span>
                 {playable && (
                   <button
                     className="btn-secondary ml-auto !py-0.5"

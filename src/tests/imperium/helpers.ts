@@ -51,6 +51,17 @@ export function setHand(state: ImpGameState, pid: PlayerId, defIds: string[]): I
   };
 }
 
+/** Move an intrigue instance of `defId` from the deck into a player's hand. */
+export function giveIntrigue(state: ImpGameState, pid: PlayerId, defId: string): ImpGameState {
+  const id = state.intrigueDeck.find((i) => state.intrigueById[i].defId === defId);
+  if (!id) throw new Error(`no ${defId} in the intrigue deck`);
+  return {
+    ...state,
+    intrigueDeck: state.intrigueDeck.filter((i) => i !== id),
+    hidden: { ...state.hidden, [pid]: { ...state.hidden[pid], intrigue: [...state.hidden[pid].intrigue, id] } },
+  };
+}
+
 /**
  * Auto-resolve every pending decision with a neutral default: influence goes to
  * the first allowed track, optional trashes are declined, deck peeks are kept.
