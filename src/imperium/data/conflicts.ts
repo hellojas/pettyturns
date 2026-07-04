@@ -128,6 +128,48 @@ export const IMP_CONFLICT_DEFS: Record<ConflictId, ConflictDef> = {
       { place: 3, gains: { spice: 1 } },
     ],
   },
+
+  // --- Second batch: more sampler variety per tier (all VERIFY) ---
+  skirmishC: {
+    id: 'skirmishC',
+    name: 'Border Clash (I)',
+    tier: 1,
+    rewards: [
+      { place: 1, gains: { solari: 2, water: 1 } },
+      { place: 2, gains: { solari: 2 } },
+      { place: 3, gains: { water: 1 } },
+    ],
+  },
+  spiceHarvest: {
+    id: 'spiceHarvest',
+    name: 'Spice Harvest (II)',
+    tier: 2,
+    rewards: [
+      { place: 1, gains: { spice: 2, vp: 1 } },
+      { place: 2, gains: { spice: 2 } },
+      { place: 3, gains: { spice: 1 } },
+    ],
+  },
+  contestOfInfluence: {
+    id: 'contestOfInfluence',
+    name: 'Contest of Influence (II)',
+    tier: 2,
+    rewards: [
+      { place: 1, gains: { anyInfluence: 1, vp: 1 } },
+      { place: 2, gains: { anyInfluence: 1 } },
+      { place: 3, gains: { solari: 1 } },
+    ],
+  },
+  imperialFavor: {
+    id: 'imperialFavor',
+    name: 'Imperial Favor (III)',
+    tier: 3,
+    rewards: [
+      { place: 1, gains: { vp: 2, intrigueCards: 1 } },
+      { place: 2, gains: { vp: 1 } },
+      { place: 3, gains: { intrigueCards: 1 } },
+    ],
+  },
 };
 
 export const IMP_CONFLICT_LIST = Object.values(IMP_CONFLICT_DEFS);

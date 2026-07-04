@@ -7,10 +7,16 @@ and stays playable, but Imperium is the product now.
 
 ## Current state (as of this handoff)
 
-- HEAD = `03114f2` on branch `claude/dune-rules-engine-u4e8vz`.
-- **`master` is EVEN with the feature branch** (fast-forwarded + pushed). Clean tree.
-- `npm test` → **136 passing** (20 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- Latest work on branch `claude/dune-rules-engine-u4e8vz`.
+- `npm test` → **288 passing** (21 files). `npx tsc --noEmit` clean. `npm run build` clean.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
+- **Card pool grown (next step #1, in progress):** imperium deck +12 cards,
+  intrigue +9, conflicts +4 (tier-2 variety for the sampler). New guard-rail
+  test `src/tests/imperium/deckComposition.test.ts` asserts every card /
+  intrigue / conflict def is structurally sound (valid faction/control/reserve
+  refs, sane counts) AND runs through `applyGains` without throwing — extend the
+  pool entry-by-entry and this fails loudly on a bad def. All values still
+  VERIFY; used only the existing Gains/Costs DSL (no engine changes needed).
 
 ## DEPLOY — GitHub Pages (user deploys this themselves)
 

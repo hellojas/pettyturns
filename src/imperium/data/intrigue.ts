@@ -26,6 +26,19 @@ export const IMP_INTRIGUE_DEFS: Record<IntrigueDefId, IntrigueDef> = {
 
   dispatchAnEnvoy: { id: 'dispatchAnEnvoy', name: 'Diplomatic Coup', kind: 'endgame', count: 2, gains: { vp: 1 } },
   masterStroke: { id: 'masterStroke', name: 'Master Stroke', kind: 'endgame', count: 1, gains: { vp: 1 } },
+
+  // --- Second batch (all VERIFY: names/effects/counts are placeholders) ---
+  feint: { id: 'feint', name: 'Feint', kind: 'combat', count: 2, gains: { swords: 2 } },
+  tacticalFlanking: { id: 'tacticalFlanking', name: 'Tactical Flanking', kind: 'combat', count: 1, cost: { spice: 2 }, gains: { swords: 4 } },
+  strategicPush: { id: 'strategicPush', name: 'Strategic Push', kind: 'combat', count: 2, gains: { troops: 1 } },
+
+  councilBriefing: { id: 'councilBriefing', name: 'Council Briefing', kind: 'plot', count: 2, gains: { intrigueCards: 1 } },
+  reallocateFunds: { id: 'reallocateFunds', name: 'Reallocate Funds', kind: 'plot', count: 2, gains: { solari: 2, water: 1 } },
+  studyTheWeirwood: { id: 'studyTheWeirwood', name: 'Deep Study', kind: 'plot', count: 2, gains: { drawCards: 1 } },
+  hiddenReserves: { id: 'hiddenReserves', name: 'Hidden Reserves', kind: 'plot', count: 1, gains: { troops: 2 } },
+  smugglersPayoff: { id: 'smugglersPayoff', name: "Smuggler's Payoff", kind: 'plot', count: 2, cost: { spice: 1 }, gains: { solari: 4 } },
+
+  quietTriumph: { id: 'quietTriumph', name: 'Quiet Triumph', kind: 'endgame', count: 1, gains: { vp: 1 } },
 };
 
 export const IMP_INTRIGUE_LIST = Object.values(IMP_INTRIGUE_DEFS);
