@@ -7,7 +7,8 @@ and stays playable, but Imperium is the product now.
 
 ## Current state (as of this handoff)
 
-- Latest work on branch `claude/dune-rules-engine-u4e8vz`.
+- Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
+  fast-forwarded to match (both even after this handoff commit).
 - `npm test` → **288 passing** (21 files). `npx tsc --noEmit` clean. `npm run build` clean.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
 - **Card pool grown (next step #1, in progress):** imperium deck +12 cards,
@@ -123,24 +124,24 @@ limit), `onRoundStart`. Data lives in `data/leaders.ts` as `passives[]`.
 
 ## Next steps (priority order)
 
-1. **Full card pool (NOT started).** `cards.ts` imperium
-   deck, `intrigue.ts`, and `conflicts.ts` are representative subsets. Extend
-   entry-by-entry (all values VERIFY, original wording only, no card text). The
-   effects DSL (`Gains`/`Costs` in types.ts) covers most cards; when one doesn't
-   fit, add an optional field + an interpreter branch in `effects.ts` + a test.
-   Good add: a `deckComposition` test asserting every def is interpretable and
-   counts are sane.
-2. **Choice prompts (pending-decision system).** `anyInfluence` rewards
+   (Card pool: DONE for now — grown with a `deckComposition` guard test. Keep
+   extending `cards.ts`/`intrigue.ts`/`conflicts.ts` entry-by-entry against the
+   owner's copy; all values VERIFY, original wording only, no card text. When a
+   card doesn't fit the `Gains`/`Costs` DSL, add an optional field + an
+   interpreter branch in `effects.ts` + a test; the composition guard fails
+   loudly on a structurally bad def.)
+
+1. **Choice prompts (pending-decision system).** `anyInfluence` rewards
    auto-pick the player's strongest track (logged); Selective Breeding trash is
    optional via `choices.trashCardId`. Replace auto-picks with a real
    pending-decision mechanism (classic game's `PendingDecision` pattern is the
    template). This also unblocks **Paul Atreides' passive** (deck-peek), which
    is currently a `passiveNote`, and lets `onAgentPlaced` support choice-driven
    effects.
-3. **Async multiplayer.** Store is hotseat + localStorage. Seam: move
+2. **Async multiplayer.** Store is hotseat + localStorage. Seam: move
    authoritative state server-side (Supabase); clients send actions and receive
    their `getVisibleImperiumState` view. Engine needs no changes.
-4. **Endgame intrigue conditions.** Currently flat VP; real cards have
+3. **Endgame intrigue conditions.** Currently flat VP; real cards have
    conditions — model as data predicates.
 
 ## Environment notes
