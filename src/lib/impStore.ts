@@ -60,13 +60,12 @@ export function deleteImpGame(gameId: string): void {
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 export type ImpDispatchable = DistributiveOmit<ImpAction, 'at'>;
 
-/** A card selected in hand, pending a space (and choices) to complete the play. */
+/** A card selected in hand, pending a space (and the sell amount) to complete the play. */
 export interface PendingPlay {
   cardId: CardId;
   spaceId?: SpaceId;
   deploy: number;
   sellSpice?: number;
-  influenceFaction?: string;
 }
 
 interface ImpStore {

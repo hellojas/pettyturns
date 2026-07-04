@@ -1,7 +1,16 @@
 import { nextInt, shuffle } from '../../game/engine/rng';
 import { IMP_CONSTANTS } from '../data/constants';
 import { IMP_CARD_DEFS } from '../data/cards';
-import type { CardDefId, Costs, Gains, ImpFactionId, ImpGameState, PlayerId } from '../types';
+import type {
+  CardDefId,
+  CardId,
+  Costs,
+  Gains,
+  ImpFactionId,
+  ImpGameState,
+  ImpPendingDecision,
+  PlayerId,
+} from '../types';
 import { impLog, impPrivate } from './log';
 
 /**
@@ -12,6 +21,19 @@ import { impLog, impPrivate } from './log';
 
 function patchPlayer(state: ImpGameState, pid: PlayerId, patch: Partial<ImpGameState['players'][string]>): ImpGameState {
   return { ...state, players: { ...state.players, [pid]: { ...state.players[pid], ...patch } } };
+}
+
+/** Append a pending decision, assigning it a deterministic id from the counter. */
+export function enqueueDecision(
+  state: ImpGameState,
+  decision: Omit<ImpPendingDecision, 'id'>,
+): ImpGameState {
+  const id = `dec-${state.decisionSeq}`;
+  return {
+    ...state,
+    decisionSeq: state.decisionSeq + 1,
+    pendingDecisions: [...state.pendingDecisions, { ...decision, id }],
+  };
 }
 
 export function drawCards(state: ImpGameState, pid: PlayerId, n: number): ImpGameState {
@@ -168,19 +190,16 @@ export function payCosts(state: ImpGameState, pid: PlayerId, costs: Costs | unde
   });
 }
 
-export interface GainContext {
-  /** Faction chosen for anyInfluence gains. */
-  influenceFaction?: ImpFactionId;
-  /** Card chosen for trashCards gains. */
-  trashCardId?: string;
-}
-
-/** Apply a Gains record. Returns the new state and troops recruited (for deploy limits). */
+/**
+ * Apply a Gains record. Returns the new state and troops recruited (for deploy
+ * limits). Choice-requiring effects (`anyInfluence`, `trashCards`) are not
+ * auto-resolved: they enqueue a pending decision for the player to answer via
+ * `imp/resolveDecision`. Every other effect resolves immediately.
+ */
 export function applyGains(
   state: ImpGameState,
   pid: PlayerId,
   gains: Gains | undefined,
-  ctx: GainContext = {},
 ): { state: ImpGameState; troopsRecruited: number } {
   if (!gains) return { state, troopsRecruited: 0 };
   let next = state;
@@ -207,11 +226,13 @@ export function applyGains(
     }
   }
   if (gains.anyInfluence) {
-    // choice supplied by the action; conflict rewards auto-pick the viewer's strongest track
-    const faction =
-      ctx.influenceFaction ??
-      (Object.entries(p().influence).sort((a, b) => b[1] - a[1])[0][0] as ImpFactionId);
-    next = addInfluence(next, pid, faction, gains.anyInfluence);
+    // The player chooses the track: raise a decision rather than auto-picking.
+    next = enqueueDecision(next, {
+      playerId: pid,
+      kind: 'influence',
+      prompt: `Gain ${gains.anyInfluence} influence with a faction of your choice.`,
+      amount: gains.anyInfluence,
+    });
   }
   if (gains.vp) {
     next = patchPlayer(next, pid, { vp: p().vp + gains.vp });
@@ -220,27 +241,16 @@ export function applyGains(
   if (gains.persuasion) next = patchPlayer(next, pid, { persuasion: p().persuasion + gains.persuasion });
   if (gains.swords) next = patchPlayer(next, pid, { swords: p().swords + gains.swords });
 
-  if (gains.trashCards && ctx.trashCardId) {
+  if (gains.trashCards) {
+    // Optional: the player picks which card(s) to trash, or declines.
     const hidden = next.hidden[pid];
-    const inHand = hidden.hand.includes(ctx.trashCardId);
-    const inDiscard = hidden.discard.includes(ctx.trashCardId);
-    if (inHand || inDiscard) {
-      next = {
-        ...next,
-        hidden: {
-          ...next.hidden,
-          [pid]: {
-            ...hidden,
-            hand: hidden.hand.filter((c) => c !== ctx.trashCardId),
-            discard: hidden.discard.filter((c) => c !== ctx.trashCardId),
-            trashed: [...hidden.trashed, ctx.trashCardId],
-          },
-        },
-      };
-      next = impLog(next, {
-        event: 'card.trashed',
-        text: `${p().name} trashed a card from their deck.`,
-        data: { cardId: ctx.trashCardId },
+    if (hidden.hand.length > 0 || hidden.discard.length > 0) {
+      next = enqueueDecision(next, {
+        playerId: pid,
+        kind: 'trash',
+        prompt: `You may trash up to ${gains.trashCards} card(s) from your hand or discard.`,
+        amount: gains.trashCards,
+        optional: true,
       });
     }
   }
@@ -293,6 +303,30 @@ export function applyGains(
   }
 
   return { state: next, troopsRecruited };
+}
+
+/** Move one card from a player's hand or discard to the trash pile (no-op if absent). */
+export function trashOneCard(state: ImpGameState, pid: PlayerId, cardId: CardId): ImpGameState {
+  const hidden = state.hidden[pid];
+  if (!hidden.hand.includes(cardId) && !hidden.discard.includes(cardId)) return state;
+  let next: ImpGameState = {
+    ...state,
+    hidden: {
+      ...state.hidden,
+      [pid]: {
+        ...hidden,
+        hand: hidden.hand.filter((c) => c !== cardId),
+        discard: hidden.discard.filter((c) => c !== cardId),
+        trashed: [...hidden.trashed, cardId],
+      },
+    },
+  };
+  next = impLog(next, {
+    event: 'card.trashed',
+    text: `${next.players[pid].name} trashes a card from their deck.`,
+    data: { cardId },
+  });
+  return next;
 }
 
 /** Create an instance of a def (reserve buys / grants) and put it in the player's discard. */

@@ -164,6 +164,12 @@ export interface LeaderPassiveParams {
   strength?: number;
   /** onReveal only: require at least this many cards revealed to fire. */
   minRevealedCards?: number;
+  /**
+   * onReveal only: instead of granting gains, let the leader inspect the top of
+   * their own deck and keep or discard it (foresight). Raises a `deckPeek`
+   * pending decision. VERIFY the trigger against your leader sheet.
+   */
+  deckPeek?: boolean;
 }
 
 export interface LeaderPassive {
@@ -239,6 +245,49 @@ export interface ImpHidden {
 
 export type ImpPhase = 'playerTurns' | 'combat' | 'finished';
 
+// ---------------------------------------------------------------------------
+// Pending decisions — the choice-prompt system
+// ---------------------------------------------------------------------------
+
+/**
+ * A choice the engine is waiting on before it can continue. Mirrors the classic
+ * game's `PendingDecision` pattern: an effect that needs a player choice records
+ * a decision instead of silently auto-picking, the engine blocks on it, and the
+ * owed player resolves it with an `imp/resolveDecision` action.
+ *
+ * Decisions are a FIFO queue; only the front decision (owned by its `playerId`)
+ * may be resolved at a time. Every deferred effect is self-contained and
+ * order-independent, so applying it when resolved yields the same result as
+ * applying it inline would have.
+ */
+export type ImpDecisionKind = 'influence' | 'trash' | 'deckPeek';
+
+export interface ImpPendingDecision {
+  id: string;
+  playerId: PlayerId;
+  kind: ImpDecisionKind;
+  /** Original-wording prompt for the UI. */
+  prompt: string;
+  /** influence: amount to gain on the chosen track. trash: max cards to trash. */
+  amount?: number;
+  /** influence: tracks the player may choose among (omit = all four). */
+  factions?: ImpFactionId[];
+  /** trash / deckPeek: the choice may be declined. */
+  optional?: boolean;
+  /** deckPeek: the top-of-deck card under inspection (visible only to its owner). */
+  cardId?: CardId;
+}
+
+/**
+ * The engine transition to run once the decision queue drains. Player-turn and
+ * combat flows can't advance while a choice is owed, so they park their
+ * continuation here and it resumes when the last decision is resolved.
+ */
+export type ImpFlowResume =
+  | { kind: 'afterPlayerTurn'; pid: PlayerId }
+  | { kind: 'afterCombat' }
+  | { kind: 'afterCombatIntrigue'; pid: PlayerId };
+
 export interface ImpLogEntry {
   seq: number;
   round: number;
@@ -294,6 +343,13 @@ export interface ImpGameState {
   /** Controller of each control space. */
   controlledBy: Partial<Record<SpaceId, PlayerId>>;
 
+  /** Choices the engine is blocked on; only the front one may be resolved. */
+  pendingDecisions: ImpPendingDecision[];
+  /** Transition to run when the decision queue drains (null when not blocked). */
+  flowResume: ImpFlowResume | null;
+  /** Monotonic counter for deterministic pending-decision ids. */
+  decisionSeq: number;
+
   rng: ImpRngState;
   log: ImpLogEntry[];
   winner: PlayerId | null;
@@ -316,9 +372,7 @@ export interface PlayCardAction extends ImpActionBase {
   /** Troops moved from garrison (plus any just recruited) into the conflict. */
   deploy?: number;
   choices?: {
-    sellSpice?: number; // sell-melange amount
-    influenceFaction?: ImpFactionId; // for anyInfluence gains
-    trashCardId?: CardId; // for trashCards gains
+    sellSpice?: number; // sell-melange amount (a placement parameter, not a post-effect choice)
   };
 }
 
@@ -338,11 +392,22 @@ export interface EndTurnAction extends ImpActionBase {
 export interface PlayIntrigueAction extends ImpActionBase {
   type: 'imp/playIntrigue';
   intrigueId: IntrigueId;
-  choices?: { influenceFaction?: ImpFactionId };
 }
 
 export interface CombatPassAction extends ImpActionBase {
   type: 'imp/combatPass';
+}
+
+/** Resolve the front pending decision (choice prompt). */
+export interface ResolveDecisionAction extends ImpActionBase {
+  type: 'imp/resolveDecision';
+  decisionId: string;
+  /** influence: the track to gain on. */
+  faction?: ImpFactionId;
+  /** trash: the card to trash (omit to decline). */
+  trashCardId?: CardId;
+  /** deckPeek: keep the top card in place, or discard it (omit = keep). */
+  discardPeeked?: boolean;
 }
 
 export type ImpAction =
@@ -351,7 +416,8 @@ export type ImpAction =
   | BuyCardAction
   | EndTurnAction
   | PlayIntrigueAction
-  | CombatPassAction;
+  | CombatPassAction
+  | ResolveDecisionAction;
 
 export interface ImpAllowedAction {
   type: ImpAction['type'];
@@ -368,8 +434,21 @@ export const impFail = (code: string, message: string): ImpValidation => ({ ok: 
 // ---------------------------------------------------------------------------
 
 export interface ImpVisibleState
-  extends Omit<ImpGameState, 'hidden' | 'imperiumDeck' | 'intrigueDeck' | 'conflictDeck' | 'log' | 'rng'> {
+  extends Omit<
+    ImpGameState,
+    | 'hidden'
+    | 'imperiumDeck'
+    | 'intrigueDeck'
+    | 'conflictDeck'
+    | 'log'
+    | 'rng'
+    | 'flowResume'
+    | 'decisionSeq'
+    | 'pendingDecisions'
+  > {
   viewerId: PlayerId | 'SPECTATOR';
+  /** Pending decisions with the peeked card hidden from everyone but its owner. */
+  pendingDecisions: ImpPendingDecision[];
   hidden: {
     self:
       | (Omit<ImpHidden, 'deck'> & { deckCount: number })

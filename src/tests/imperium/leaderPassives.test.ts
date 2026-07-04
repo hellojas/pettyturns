@@ -43,9 +43,34 @@ describe('leader passives', () => {
 
     it('does not fire for a leader without an onReveal passive', () => {
       let s = makeImp();
-      s = patch(s, 'p1', { leaderId: 'paulAtreides', solari: 0 });
+      s = patch(s, 'p1', { leaderId: 'glossuRabban', solari: 0 });
       s = apply(s, { type: 'imp/reveal', playerId: 'p1' });
       expect(s.players.p1.solari).toBe(0);
+      expect(s.pendingDecisions).toHaveLength(0);
+    });
+  });
+
+  describe('onReveal deckPeek hook (Paul)', () => {
+    it('raises a foresight decision to keep or discard the top of the deck', () => {
+      let s = makeImp();
+      s = patch(s, 'p1', { leaderId: 'paulAtreides' });
+      const topBefore = s.hidden.p1.deck[0];
+      s = apply(s, { type: 'imp/reveal', playerId: 'p1' });
+      // reveal is blocked on a private deck-peek decision owned by p1
+      const d = s.pendingDecisions[0];
+      expect(d?.kind).toBe('deckPeek');
+      expect(d?.playerId).toBe('p1');
+      expect(d?.cardId).toBe(topBefore);
+
+      // keeping leaves the deck untouched
+      const kept = apply(s, { type: 'imp/resolveDecision', playerId: 'p1', decisionId: d.id, discardPeeked: false });
+      expect(kept.hidden.p1.deck[0]).toBe(topBefore);
+      expect(kept.pendingDecisions).toHaveLength(0);
+
+      // setting aside moves it to the discard
+      const set = apply(s, { type: 'imp/resolveDecision', playerId: 'p1', decisionId: d.id, discardPeeked: true });
+      expect(set.hidden.p1.deck[0]).not.toBe(topBefore);
+      expect(set.hidden.p1.discard).toContain(topBefore);
     });
   });
 

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ImpBoard from '../components/ImpBoard';
 import ImpConflict from '../components/ImpConflict';
+import ImpDecision from '../components/ImpDecision';
 import ImpHand from '../components/ImpHand';
 import ImpLog from '../components/ImpLog';
 import ImpMarket from '../components/ImpMarket';
@@ -72,6 +73,12 @@ export default function Game() {
           </div>
 
           <div className="space-y-4">
+            {view.pendingDecisions.length > 0 && (
+              <section className="panel border-amber-600">
+                <h2 className="panel-title">Decision</h2>
+                <ImpDecision view={view} viewingAs={viewingAs} />
+              </section>
+            )}
             {viewingAs !== 'SPECTATOR' && (
               <section className="panel border-sand-600">
                 <h2 className="panel-title">Your cards</h2>

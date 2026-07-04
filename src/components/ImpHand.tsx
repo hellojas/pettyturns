@@ -1,7 +1,7 @@
 import { IMP_CARD_DEFS } from '../imperium/data/cards';
 import { IMP_INTRIGUE_DEFS } from '../imperium/data/intrigue';
 import { IMP_SPACES } from '../imperium/data/spaces';
-import { IMP_FACTIONS, type ImpVisibleState, type PlayerId } from '../imperium/types';
+import type { ImpVisibleState, PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 
 const ICON_SHORT: Record<string, string> = {
@@ -99,21 +99,9 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
                 </label>
               )}
               {(pendingDef?.agentGains?.anyInfluence ?? 0) > 0 && (
-                <label className="flex items-center gap-2">
-                  Influence with
-                  <select
-                    className="input"
-                    value={pending.influenceFaction ?? ''}
-                    onChange={(e) => setPending({ ...pending, influenceFaction: e.target.value })}
-                  >
-                    <option value="">choose…</option>
-                    {IMP_FACTIONS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="text-sand-100/50">
+                  You'll choose the influence track after playing.
+                </div>
               )}
               <div className="flex gap-2">
                 <button
@@ -126,10 +114,8 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
                       cardId: pending.cardId,
                       spaceId: pending.spaceId!,
                       deploy: pending.deploy || undefined,
-                      choices: {
-                        sellSpice: space?.special === 'sellMelange' ? (pending.sellSpice ?? 2) : undefined,
-                        influenceFaction: pending.influenceFaction as never,
-                      },
+                      choices:
+                        space?.special === 'sellMelange' ? { sellSpice: pending.sellSpice ?? 2 } : undefined,
                     })
                   }
                 >

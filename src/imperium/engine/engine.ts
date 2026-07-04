@@ -10,17 +10,29 @@ import type {
   CardId,
   ImpAction,
   ImpAllowedAction,
+  ImpFlowResume,
   ImpGameState,
+  ImpPendingDecision,
   ImpValidation,
   LeaderPassive,
   LeaderPassiveHook,
   PlayCardAction,
   PlayIntrigueAction,
   PlayerId,
+  ResolveDecisionAction,
 } from '../types';
-import { impFail, impOk } from '../types';
-import { addInfluence, applyGains, canPay, payCosts, drawCards, acquireCard } from './effects';
-import { impLog } from './log';
+import { IMP_FACTIONS, impFail, impOk } from '../types';
+import {
+  addInfluence,
+  applyGains,
+  canPay,
+  payCosts,
+  drawCards,
+  acquireCard,
+  trashOneCard,
+  enqueueDecision,
+} from './effects';
+import { impLog, impPrivate } from './log';
 
 /**
  * Turn engine.
@@ -111,6 +123,17 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
   const pid = action.playerId;
   const p = player(state, pid);
 
+  // The decision queue takes precedence: while a choice is owed, the only legal
+  // move is for that player to resolve the front decision.
+  const front = state.pendingDecisions[0];
+  if (action.type === 'imp/resolveDecision') {
+    if (!front) return impFail('no-decision', 'There is no decision to resolve.');
+    if (front.id !== action.decisionId) return impFail('stale-decision', 'Resolve the current decision first.');
+    if (front.playerId !== pid) return impFail('not-your-decision', 'That decision belongs to another player.');
+    return validateResolve(state, front, action);
+  }
+  if (front) return impFail('decision-pending', 'Resolve the pending decision first.');
+
   switch (action.type) {
     case 'imp/playCard': {
       if (state.phase !== 'playerTurns' || state.turn !== pid)
@@ -152,8 +175,6 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
         if (action.deploy > p.garrison + Math.min(gainsTroops, p.supply))
           return impFail('not-enough-troops', 'Not enough troops to deploy.');
       }
-      if (def.agentGains?.anyInfluence && !action.choices?.influenceFaction)
-        return impFail('choice-required', 'Choose which faction to gain influence with.');
       return impOk();
     }
 
@@ -204,8 +225,6 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
       }
       const cost = canPay(state, pid, def.cost);
       if (!cost.ok) return impFail('cannot-afford', `You cannot pay that card's cost (${cost.reason}).`);
-      if (def.gains?.anyInfluence && !a.choices?.influenceFaction)
-        return impFail('choice-required', 'Choose which faction to gain influence with.');
       return impOk();
     }
 
@@ -217,12 +236,58 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
   }
 }
 
+/** Validate a resolution against the decision it targets. */
+function validateResolve(
+  state: ImpGameState,
+  decision: ImpPendingDecision,
+  action: ResolveDecisionAction,
+): ImpValidation {
+  const pid = action.playerId;
+  switch (decision.kind) {
+    case 'influence': {
+      if (!action.faction) return impFail('choice-required', 'Choose which faction to gain influence with.');
+      const allowed = decision.factions ?? IMP_FACTIONS;
+      if (!allowed.includes(action.faction)) return impFail('bad-faction', 'That faction is not a valid choice.');
+      return impOk();
+    }
+    case 'trash': {
+      if (action.trashCardId === undefined) return impOk(); // declining is always allowed
+      const hidden = state.hidden[pid];
+      if (!hidden.hand.includes(action.trashCardId) && !hidden.discard.includes(action.trashCardId))
+        return impFail('not-trashable', 'You can only trash a card from your hand or discard.');
+      return impOk();
+    }
+    case 'deckPeek':
+      return impOk(); // keep or discard are both always legal
+  }
+}
+
+/** Short label describing the choice a pending decision asks for. */
+function decisionLabel(decision: ImpPendingDecision): string {
+  switch (decision.kind) {
+    case 'influence':
+      return `Choose a faction for +${decision.amount} influence`;
+    case 'trash':
+      return `Trash a card (or decline)`;
+    case 'deckPeek':
+      return `Foresight: keep or discard the top of your deck`;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // allowed actions (drives the UI)
 // ---------------------------------------------------------------------------
 
 export function impAllowedActions(state: ImpGameState, pid: PlayerId): ImpAllowedAction[] {
   if (state.phase === 'finished' || !state.players[pid]) return [];
+
+  // A pending decision preempts everything else for its owner (and blocks others).
+  const front = state.pendingDecisions[0];
+  if (front) {
+    if (front.playerId !== pid) return [];
+    return [{ type: 'imp/resolveDecision', label: decisionLabel(front), params: { decision: front } }];
+  }
+
   const p = state.players[pid];
   const actions: ImpAllowedAction[] = [];
 
@@ -280,7 +345,7 @@ export function impApply(state: ImpGameState, action: ImpAction): ImpGameState {
 
   switch (action.type) {
     case 'imp/playCard':
-      return afterPlayerTurn(applyPlayCard(state, action), pid);
+      return settle(applyPlayCard(state, action), { kind: 'afterPlayerTurn', pid });
     case 'imp/reveal':
       return applyReveal(state, pid, action.at);
     case 'imp/buyCard':
@@ -288,7 +353,7 @@ export function impApply(state: ImpGameState, action: ImpAction): ImpGameState {
     case 'imp/endTurn': {
       let next = impLog(state, { event: 'turn.done', text: `${state.players[pid].name} ends their round.`, at: action.at });
       next = { ...next, players: { ...next.players, [pid]: { ...next.players[pid], turnDone: true } } };
-      return afterPlayerTurn(next, pid);
+      return settle(next, { kind: 'afterPlayerTurn', pid });
     }
     case 'imp/playIntrigue':
       return applyIntrigue(state, action);
@@ -301,7 +366,107 @@ export function impApply(state: ImpGameState, action: ImpAction): ImpGameState {
       }
       return { ...next, turn: nextCombatWindow(next, pid) };
     }
+    case 'imp/resolveDecision':
+      return applyResolveDecision(state, action);
   }
+}
+
+// ---------------------------------------------------------------------------
+// pending decisions — blocking and resumption
+// ---------------------------------------------------------------------------
+
+/**
+ * Continue a flow, but only if no choice is owed. If the just-applied step
+ * enqueued decisions, park the continuation on `flowResume` and block; it runs
+ * later, once the queue drains (see `applyResolveDecision`).
+ */
+function settle(state: ImpGameState, resume: ImpFlowResume): ImpGameState {
+  if (state.pendingDecisions.length > 0) return { ...state, flowResume: resume };
+  return runResume(state, resume);
+}
+
+function runResume(state: ImpGameState, resume: ImpFlowResume): ImpGameState {
+  const s = { ...state, flowResume: null };
+  switch (resume.kind) {
+    case 'afterPlayerTurn':
+      return afterPlayerTurn(s, resume.pid);
+    case 'afterCombat':
+      return makersAndRecall(s);
+    case 'afterCombatIntrigue': {
+      // A played combat card reopens everyone's response window.
+      const reset = { ...s, combatPassed: [] };
+      return { ...reset, turn: nextCombatWindow(reset, resume.pid) };
+    }
+  }
+}
+
+function applyResolveDecision(state: ImpGameState, action: ResolveDecisionAction): ImpGameState {
+  const [front, ...rest] = state.pendingDecisions;
+  const pid = front.playerId;
+  let next: ImpGameState = { ...state, pendingDecisions: rest };
+
+  switch (front.kind) {
+    case 'influence':
+      next = addInfluence(next, pid, action.faction!, front.amount ?? 0);
+      break;
+    case 'trash': {
+      if (action.trashCardId !== undefined) {
+        next = trashOneCard(next, pid, action.trashCardId);
+        // Multi-card grants trash one at a time: re-queue the remainder up front.
+        const remaining = (front.amount ?? 1) - 1;
+        const hidden = next.hidden[pid];
+        if (remaining > 0 && (hidden.hand.length > 0 || hidden.discard.length > 0)) {
+          next = {
+            ...next,
+            decisionSeq: next.decisionSeq + 1,
+            pendingDecisions: [{ ...front, id: `dec-${next.decisionSeq}`, amount: remaining }, ...next.pendingDecisions],
+          };
+        }
+      } else {
+        next = impLog(next, {
+          event: 'decision.declined',
+          text: `${next.players[pid].name} declines to trash a card.`,
+          at: action.at,
+        });
+      }
+      break;
+    }
+    case 'deckPeek': {
+      const hidden = next.hidden[pid];
+      // Only act if the peeked card is still on top (defensive against stale state).
+      if (front.cardId && hidden.deck[0] === front.cardId) {
+        if (action.discardPeeked) {
+          next = {
+            ...next,
+            hidden: {
+              ...next.hidden,
+              [pid]: { ...hidden, deck: hidden.deck.slice(1), discard: [...hidden.discard, front.cardId] },
+            },
+          };
+          next = impLog(next, {
+            event: 'deck.foresight',
+            text: `${next.players[pid].name} sets aside the top card of their deck.`,
+            visibility: impPrivate(pid),
+            at: action.at,
+          });
+        } else {
+          next = impLog(next, {
+            event: 'deck.foresight',
+            text: `${next.players[pid].name} keeps the top card of their deck.`,
+            visibility: impPrivate(pid),
+            at: action.at,
+          });
+        }
+      }
+      break;
+    }
+  }
+
+  // When the queue empties, run whatever flow was parked waiting on it.
+  if (next.pendingDecisions.length === 0 && next.flowResume) {
+    return runResume(next, next.flowResume);
+  }
+  return next;
 }
 
 function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameState {
@@ -396,13 +561,9 @@ function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameStat
   }
 
   // gains: space, card, signet
-  const ctx = {
-    influenceFaction: action.choices?.influenceFaction,
-    trashCardId: action.choices?.trashCardId,
-  };
-  const fromSpace = applyGains(next, pid, spaceGains, ctx);
+  const fromSpace = applyGains(next, pid, spaceGains);
   next = fromSpace.state;
-  const fromCard = applyGains(next, pid, def.agentGains, ctx);
+  const fromCard = applyGains(next, pid, def.agentGains);
   next = fromCard.state;
   let troopsRecruited = fromSpace.troopsRecruited + fromCard.troopsRecruited;
   if (def.signet) {
@@ -410,7 +571,7 @@ function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameStat
     const paid = canPay(next, pid, leader.signetCost);
     if (paid.ok) {
       next = payCosts(next, pid, leader.signetCost);
-      const fromSignet = applyGains(next, pid, leader.signetGains, ctx);
+      const fromSignet = applyGains(next, pid, leader.signetGains);
       next = fromSignet.state;
       troopsRecruited += fromSignet.troopsRecruited;
       next = impLog(next, { event: 'signet.used', text: `${next.players[pid].name} uses their signet ring ability.` });
@@ -425,7 +586,7 @@ function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameStat
   // leader passive: fires when this agent is placed (optionally on a group/space)
   for (const passive of leaderPassives(next, pid, 'onAgentPlaced')) {
     if (!passiveMatchesSpace(passive, space)) continue;
-    const r = applyGains(next, pid, passive.params?.gains, ctx);
+    const r = applyGains(next, pid, passive.params?.gains);
     next = r.state;
     troopsRecruited += r.troopsRecruited;
     next = impLog(next, {
@@ -482,7 +643,21 @@ function applyReveal(state: ImpGameState, pid: PlayerId, at?: string): ImpGameSt
   // leader passive: fires on the reveal turn
   for (const passive of leaderPassives(next, pid, 'onReveal')) {
     if (revealedIds.length < (passive.params?.minRevealedCards ?? 0)) continue;
-    next = applyGains(next, pid, passive.params?.gains).state;
+    if (passive.params?.deckPeek) {
+      // Foresight: raise a decision to keep or set aside the top of the deck.
+      const top = next.hidden[pid].deck[0];
+      if (top) {
+        next = enqueueDecision(next, {
+          playerId: pid,
+          kind: 'deckPeek',
+          prompt: 'Look at the top card of your deck: keep it, or set it aside into your discard.',
+          optional: true,
+          cardId: top,
+        });
+      }
+    } else {
+      next = applyGains(next, pid, passive.params?.gains).state;
+    }
     next = impLog(next, {
       event: 'leader.passive',
       text: `${next.players[pid].name}'s leader ability triggers on reveal.`,
@@ -557,11 +732,12 @@ function applyIntrigue(state: ImpGameState, action: PlayIntrigueAction): ImpGame
     text: `${next.players[pid].name} plays intrigue: ${def.name}.`,
     at: action.at,
   });
-  next = applyGains(next, pid, def.gains, { influenceFaction: action.choices?.influenceFaction }).state;
+  next = applyGains(next, pid, def.gains).state;
 
   if (def.kind === 'combat') {
-    // playing a card reopens everyone's response window
-    next = { ...next, combatPassed: [], turn: nextCombatWindow(next, pid) };
+    // A combat card reopens everyone's response window — but only once any
+    // choice it raised (e.g. influence) has been resolved.
+    return settle(next, { kind: 'afterCombatIntrigue', pid });
   }
   return next;
 }
@@ -657,7 +833,10 @@ function resolveCombat(state: ImpGameState): ImpGameState {
     }
   }
 
-  return makersAndRecall(next);
+  // Combat rewards may raise influence choices; makers/recall (and the endgame
+  // check) run only once those are resolved, so a reward that crosses a VP
+  // threshold still ends the game in the correct round.
+  return settle(next, { kind: 'afterCombat' });
 }
 
 function makersAndRecall(state: ImpGameState): ImpGameState {

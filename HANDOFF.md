@@ -9,15 +9,40 @@ and stays playable, but Imperium is the product now.
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
   fast-forwarded to match (both even after this handoff commit).
-- `npm test` → **288 passing** (21 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- `npm test` → **299 passing** (22 files). `npx tsc --noEmit` clean. `npm run build` clean.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
-- **Card pool grown (next step #1, in progress):** imperium deck +12 cards,
-  intrigue +9, conflicts +4 (tier-2 variety for the sampler). New guard-rail
-  test `src/tests/imperium/deckComposition.test.ts` asserts every card /
-  intrigue / conflict def is structurally sound (valid faction/control/reserve
-  refs, sane counts) AND runs through `applyGains` without throwing — extend the
-  pool entry-by-entry and this fails loudly on a bad def. All values still
-  VERIFY; used only the existing Gains/Costs DSL (no engine changes needed).
+- Card pool grown with a `deckComposition` guard test (see below); still VERIFY.
+- **Choice prompts / pending-decision system — DONE (was next step #1).**
+  `anyInfluence`, optional `trashCards`, and Paul's foresight are now real
+  player choices instead of auto-picks. See the section below. Also verified
+  end-to-end in the browser (Decision panel renders, resolves, play continues).
+
+### Pending-decision system (how it works)
+
+- `state.pendingDecisions: ImpPendingDecision[]` is a FIFO queue; only the
+  **front** decision (owned by its `playerId`) may be resolved, via the new
+  `imp/resolveDecision` action. While the queue is non-empty every other action
+  is rejected (`impValidate` → `decision-pending`) and `impAllowedActions`
+  surfaces only the resolve for the owed player.
+- Effects that need a choice **enqueue** a decision instead of resolving inline
+  (`applyGains` in `effects.ts`): `anyInfluence` → `influence` decision,
+  `trashCards` → optional `trash` decision. Paul's `onReveal` passive with
+  `params.deckPeek` → a `deckPeek` decision (keep or set-aside the top card).
+- Flows that can't finish while a choice is owed **park a continuation** on
+  `state.flowResume` and block; it runs when the queue drains
+  (`settle`/`runResume` in `engine.ts`). Three resume points: `afterPlayerTurn`
+  (agent play / end turn), `afterCombat` (combat rewards → makers/recall), and
+  `afterCombatIntrigue` (reopen the combat window). This is what keeps a
+  combat-reward influence that crosses a VP level ending the game in the correct
+  round — makers/recall + the endgame check run only after it resolves.
+- Every deferred effect is self-contained and order-independent, so resolving
+  it later yields the same result as inline would have.
+- `decisionSeq` gives deterministic ids (`dec-N`); visibility redacts a
+  `deckPeek`'s `cardId` for everyone but its owner. UI: `ImpDecision.tsx`
+  (mounted in `Game.tsx`). Tests: `src/tests/imperium/decisions.test.ts` plus a
+  Paul deckPeek case in `leaderPassives.test.ts`. Test helper `drainDecisions`
+  auto-resolves with neutral defaults; `makeImp`'s default lineup deliberately
+  keeps Paul out of the low seats (his reveal always raises a decision).
 
 ## DEPLOY — GitHub Pages (user deploys this themselves)
 
@@ -74,10 +99,12 @@ src/imperium/            ← THE GAME (Dune: Imperium)
     intrigue.ts          plot/combat/endgame SUBSET (~14 cards)
     conflicts.ts         12 conflict cards in 3 tiers (placeholder rewards)
     leaders.ts           8 leaders; signet + data-driven passives IMPLEMENTED
-                         (7 machine-enforced; Paul Atreides = note-only)
+                         (all 8 machine-enforced; Paul = onReveal deckPeek via
+                         the pending-decision system)
   engine/
     setup.ts             createImperiumGame (deterministic)
-    effects.ts           applyGains/payCosts/addInfluence(+alliance)/draw/acquire
+    effects.ts           applyGains/payCosts/addInfluence/draw/acquire +
+                         enqueueDecision/trashOneCard (choice prompts)
     engine.ts            impValidate/impApply/impAllowedActions, turn machine,
                          combat resolution, makers/recall, endgame scoring,
                          leaderPassives() hooks
@@ -122,27 +149,30 @@ Leader passives are consumed via `leaderPassives(state, pid, hook)` in
 (optionally gated by space `group`/`spaceId`; troop grants feed the deploy
 limit), `onRoundStart`. Data lives in `data/leaders.ts` as `passives[]`.
 
+A choice a card/space/reward needs is a **pending decision** (see the section
+up top): the effect enqueues one, the engine blocks the queue, and
+`imp/resolveDecision` applies it. To add a new choice-driven effect, enqueue a
+decision in `effects.ts`/`engine.ts` and (if the flow can't finish while it's
+owed) park a `flowResume` continuation via `settle`.
+
 ## Next steps (priority order)
 
-   (Card pool: DONE for now — grown with a `deckComposition` guard test. Keep
-   extending `cards.ts`/`intrigue.ts`/`conflicts.ts` entry-by-entry against the
-   owner's copy; all values VERIFY, original wording only, no card text. When a
-   card doesn't fit the `Gains`/`Costs` DSL, add an optional field + an
-   interpreter branch in `effects.ts` + a test; the composition guard fails
-   loudly on a structurally bad def.)
+   (Card pool + choice prompts: DONE. Keep extending
+   `cards.ts`/`intrigue.ts`/`conflicts.ts` entry-by-entry against the owner's
+   copy; all values VERIFY, original wording only, no card text. When a card
+   doesn't fit the `Gains`/`Costs` DSL, add an optional field + an interpreter
+   branch in `effects.ts` + a test; the composition guard fails loudly on a
+   structurally bad def. A card needing a player choice enqueues a pending
+   decision — see the pending-decision section.)
 
-1. **Choice prompts (pending-decision system).** `anyInfluence` rewards
-   auto-pick the player's strongest track (logged); Selective Breeding trash is
-   optional via `choices.trashCardId`. Replace auto-picks with a real
-   pending-decision mechanism (classic game's `PendingDecision` pattern is the
-   template). This also unblocks **Paul Atreides' passive** (deck-peek), which
-   is currently a `passiveNote`, and lets `onAgentPlaced` support choice-driven
-   effects.
-2. **Async multiplayer.** Store is hotseat + localStorage. Seam: move
+1. **Async multiplayer.** Store is hotseat + localStorage. Seam: move
    authoritative state server-side (Supabase); clients send actions and receive
    their `getVisibleImperiumState` view. Engine needs no changes.
-3. **Endgame intrigue conditions.** Currently flat VP; real cards have
+2. **Endgame intrigue conditions.** Currently flat VP; real cards have
    conditions — model as data predicates.
+3. **`onAgentPlaced` choice-driven passives.** The pending-decision plumbing now
+   supports this (a placement passive can enqueue a decision); no leader in the
+   current config needs it yet, but the hook is ready.
 
 ## Environment notes
 

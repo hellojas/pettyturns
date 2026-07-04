@@ -1,11 +1,14 @@
 import { createImperiumGame } from '../../imperium/engine/setup';
 import { impApply } from '../../imperium/engine/engine';
-import type { CardId, ImpAction, ImpGameState, PlayerId, SpaceId } from '../../imperium/types';
+import { IMP_FACTIONS, type CardId, type ImpAction, type ImpGameState, type PlayerId, type SpaceId } from '../../imperium/types';
 import { IMP_CARD_DEFS } from '../../imperium/data/cards';
 import { IMP_SPACES } from '../../imperium/data/spaces';
 
+// Default lineup deliberately keeps Paul out of the low seats: his foresight
+// passive raises a pending decision on every reveal, and most tests drive plain
+// reveal→act sequences. Tests that exercise Paul patch the leader explicitly.
 export function makeImp(names: string[] = ['Alice', 'Bob'], seed = 42): ImpGameState {
-  const leaders = ['paulAtreides', 'baronHarkonnen', 'dukeLeto', 'glossuRabban'];
+  const leaders = ['helenaRichese', 'baronHarkonnen', 'dukeLeto', 'glossuRabban'];
   return createImperiumGame({
     gameId: 'imp-test',
     seed,
@@ -48,23 +51,53 @@ export function setHand(state: ImpGameState, pid: PlayerId, defIds: string[]): I
   };
 }
 
+/**
+ * Auto-resolve every pending decision with a neutral default: influence goes to
+ * the first allowed track, optional trashes are declined, deck peeks are kept.
+ * Lets flow-driving helpers step past choice prompts without changing outcomes.
+ */
+export function drainDecisions(state: ImpGameState): ImpGameState {
+  let s = state;
+  let guard = 0;
+  while (s.pendingDecisions.length > 0 && guard++ < 50) {
+    const d = s.pendingDecisions[0];
+    if (d.kind === 'influence') {
+      s = apply(s, {
+        type: 'imp/resolveDecision',
+        playerId: d.playerId,
+        decisionId: d.id,
+        faction: (d.factions ?? IMP_FACTIONS)[0],
+      });
+    } else {
+      // trash → decline; deckPeek → keep. Both are the empty-extra resolution.
+      s = apply(s, { type: 'imp/resolveDecision', playerId: d.playerId, decisionId: d.id });
+    }
+  }
+  return s;
+}
+
 /** Play out exactly one round with no purchases or agent turns (reveal + end + pass). */
 export function endRoundQuietly(state: ImpGameState): ImpGameState {
   const startRound = state.round;
-  let s = state;
+  let s = drainDecisions(state);
   let guard = 0;
-  while (s.phase === 'playerTurns' && s.round === startRound && s.turn && guard++ < 20) {
+  while (s.phase === 'playerTurns' && s.round === startRound && s.turn && guard++ < 40) {
     const pid = s.turn;
     if (!s.players[pid].revealed) {
-      s = apply(s, { type: 'imp/reveal', playerId: pid });
+      s = drainDecisions(apply(s, { type: 'imp/reveal', playerId: pid }));
     }
-    if (s.phase === 'playerTurns' && s.round === startRound && s.turn === pid) {
-      s = apply(s, { type: 'imp/endTurn', playerId: pid });
+    if (
+      s.phase === 'playerTurns' &&
+      s.round === startRound &&
+      s.turn === pid &&
+      s.pendingDecisions.length === 0
+    ) {
+      s = drainDecisions(apply(s, { type: 'imp/endTurn', playerId: pid }));
     }
   }
   guard = 0;
-  while (s.phase === 'combat' && s.turn && guard++ < 20) {
-    s = apply(s, { type: 'imp/combatPass', playerId: s.turn });
+  while (s.phase === 'combat' && s.turn && guard++ < 40) {
+    s = drainDecisions(apply(s, { type: 'imp/combatPass', playerId: s.turn }));
   }
   return s;
 }

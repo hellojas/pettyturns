@@ -39,6 +39,12 @@ export function getVisibleImperiumState(
     return isPlayer && entry.visibility.playerIds.includes(viewerId as PlayerId);
   });
 
+  // Pending decisions are public (so clients know play is blocked and on whom),
+  // but a deck-peek's card identity is private to the player deciding.
+  const pendingDecisions = state.pendingDecisions.map((d) =>
+    d.playerId === viewerId ? d : { ...d, cardId: undefined },
+  );
+
   return {
     gameId: state.gameId,
     schemaVersion: state.schemaVersion,
@@ -62,6 +68,7 @@ export function getVisibleImperiumState(
     controlledBy: state.controlledBy,
     winner: state.winner,
     finalStandings: state.finalStandings,
+    pendingDecisions,
     viewerId,
     hidden: { self, others },
     imperiumDeckCount: state.imperiumDeck.length,

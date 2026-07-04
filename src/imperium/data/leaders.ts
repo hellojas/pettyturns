@@ -7,9 +7,10 @@ import type { ImpLeaderDef, LeaderId } from '../types';
  * an agent turn) plus a machine-enforced passive expressed as data and
  * consumed at a named engine hook (`onReveal`, `onAgentPlaced`,
  * `combatStrength`, `onRoundStart`) — the same data-driven pattern the classic
- * game uses for faction powers. A passive whose real effect needs a player
- * choice prompt (not yet available — see HANDOFF gap #3) is left as a
- * `passiveNote` instead of a machine passive.
+ * game uses for faction powers. Passives that need a player choice are now
+ * machine-enforced through the pending-decision system (e.g. Paul's foresight
+ * `deckPeek`); a `passiveNote` remains available for any ability still awaiting
+ * an engine hook.
  *
  * VERIFY: every summary is original wording and every number below is a
  * placeholder to be checked against the leader sheets you own. Correct the
@@ -21,9 +22,16 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'paulAtreides',
     name: 'Paul Atreides',
     signetGains: { drawCards: 1 },
-    // Real ability lets him inspect the top of his deck and reorder it — that
-    // needs a pending-decision prompt (HANDOFF gap #3), so it stays a note.
-    passiveNote: 'PASSIVE (note only) — foresight over the top of his own deck; awaits the choice-prompt system before it can be machine-enforced.',
+    passives: [
+      {
+        id: 'paul-foresight',
+        hook: 'onReveal',
+        summary: 'Prescience: on his reveal turn he inspects the top of his deck and may set it aside.',
+        // deckPeek raises a pending decision (keep or discard the top card).
+        // VERIFY the trigger/timing against the leader sheet you own.
+        params: { deckPeek: true },
+      },
+    ],
   },
   dukeLeto: {
     id: 'dukeLeto',

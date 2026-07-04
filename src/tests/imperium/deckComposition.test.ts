@@ -163,13 +163,13 @@ describe('every effect is interpretable by the engine', () => {
   // A live game gives applyGains real players, decks and intrigue to act on.
   const base = makeImp(['A', 'B']);
   const pid = base.playerOrder[0];
-  const trashCardId = base.hidden[pid].hand[0];
-  const ctx = { influenceFaction: 'emperor' as const, trashCardId };
 
   const run = (gains: Gains | undefined, where: string) => {
     it(`applies ${where} without throwing`, () => {
       expect(() => {
-        const result = applyGains(base, pid, gains, ctx);
+        // Choice-requiring effects enqueue a pending decision rather than
+        // resolving inline; either way the interpreter must not throw.
+        const result = applyGains(base, pid, gains);
         // engine state must stay JSON-serializable after any effect
         JSON.parse(JSON.stringify(result.state));
       }).not.toThrow();
