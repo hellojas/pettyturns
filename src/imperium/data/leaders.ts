@@ -16,6 +16,12 @@ import type { ImpLeaderDef, LeaderId } from '../types';
  * placeholder to be checked against the leader sheets you own. Correct the
  * `params` (and add/remove passives) to match your copy — the engine reads
  * only this config.
+ *
+ * PORTRAITS: each leader may carry an optional `portrait` (a URL or a path under
+ * `/public`, e.g. `portrait: '/portraits/paul.jpg'`). If you own the game and
+ * want the real character faces, drop your own image files in and set the paths
+ * here — the UI will render them. With no `portrait`, the UI draws an original
+ * generated cameo. No copyrighted art ships in this repo.
  */
 export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   paulAtreides: {

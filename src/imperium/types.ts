@@ -246,6 +246,13 @@ export interface ImpLeaderDef {
    * that needs a player choice prompt). Kept alongside `passives`.
    */
   passiveNote?: string;
+  /**
+   * Optional owner-supplied portrait: a URL or a path under `/public` (e.g.
+   * `/portraits/paul.jpg`). People who own the physical game can point this at
+   * their own art and the UI renders it as the leader's face; when absent the UI
+   * draws an original generated cameo. No copyrighted art ships in this repo.
+   */
+  portrait?: string;
 }
 
 // ---------------------------------------------------------------------------
