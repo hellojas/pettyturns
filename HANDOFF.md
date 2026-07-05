@@ -42,8 +42,18 @@ has only this file + the repo.
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
   fast-forwarded to match (both even after this handoff commit).
-- `npm test` → **325 passing** (25 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- `npm test` → **331 passing** (26 files). `npx tsc --noEmit` clean. `npm run build` clean.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
+- **VP source ledger + end-game results screen — DONE.** Every VP change routes
+  through `awardVp()` in `effects.ts`, appending a signed
+  `VpLedgerEntry { round, source, amount, detail }` to `player.vpLedger`
+  (sources: influenceLevel, alliance, conflict, card, endgameIntrigue, other;
+  `applyGains` takes an optional attribution, default 'other'). `ImpGameOver.tsx`
+  shows final standings with a per-source breakdown + tiebreaker resources; it's
+  rendered in `Game.tsx` when `phase === 'finished'`. Invariant test
+  (`vpLedger.test.ts`): the ledger always sums to the VP total. When adding a
+  new VP-granting mechanic, award it via `awardVp`/`applyGains` attribution so
+  the breakdown stays complete.
 - **Undo/redo — DONE.** The hotseat store is now JOURNAL-backed, not
   snapshot-backed: it persists `{ initial, journal, cursor }` and derives the
   live state via `engine/replay.ts` (`replayImperiumGame` / `stateAfter` fold
