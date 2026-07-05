@@ -108,6 +108,7 @@ export function createImperiumGame(options: NewImperiumGameOptions): ImpGameStat
       agentsLeft: IMP_CONSTANTS.startingAgents,
       hasMentat: false,
       vp: 0,
+      vpLedger: [],
       influence: { ...ZERO_INFLUENCE },
       hasCouncilSeat: false,
       hasSwordmaster: false,

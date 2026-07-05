@@ -11,8 +11,36 @@ import type {
   ImpGameState,
   ImpPendingDecision,
   PlayerId,
+  VpSource,
 } from '../types';
 import { impLog, impPrivate } from './log';
+
+/**
+ * Single choke point for every victory-point change: updates the total AND
+ * appends a ledger entry recording the cause, so the end-game screen can show a
+ * per-source score breakdown and explain tiebreaks. `amount` is signed.
+ */
+export function awardVp(
+  state: ImpGameState,
+  pid: PlayerId,
+  amount: number,
+  source: VpSource,
+  detail: string,
+): ImpGameState {
+  if (amount === 0) return state;
+  const p = state.players[pid];
+  return {
+    ...state,
+    players: {
+      ...state.players,
+      [pid]: {
+        ...p,
+        vp: p.vp + amount,
+        vpLedger: [...p.vpLedger, { round: state.round, source, amount, detail }],
+      },
+    },
+  };
+}
 
 /**
  * The effects interpreter: every card, space, intrigue, and conflict reward is
@@ -113,8 +141,10 @@ export function addInfluence(state: ImpGameState, pid: PlayerId, faction: ImpFac
 
   let next = patchPlayer(state, pid, {
     influence: { ...p.influence, [faction]: after },
-    vp: p.vp + vpDelta,
   });
+  if (vpDelta !== 0) {
+    next = awardVp(next, pid, vpDelta, 'influenceLevel', `${faction} influence track`);
+  }
   next = impLog(next, {
     event: 'influence.changed',
     text: `${p.name} ${delta > 0 ? 'gains' : 'loses'} influence with the ${faction} (${before} → ${after})${
@@ -166,10 +196,10 @@ export function reevaluateAlliance(state: ImpGameState, faction: ImpFactionId): 
   if (newHolder === holder) return state;
   let next = state;
   if (holder) {
-    next = patchPlayer(next, holder, { vp: next.players[holder].vp - 1 });
+    next = awardVp(next, holder, -1, 'alliance', `lost the ${faction} alliance`);
   }
   if (newHolder) {
-    next = patchPlayer(next, newHolder, { vp: next.players[newHolder].vp + 1 });
+    next = awardVp(next, newHolder, 1, 'alliance', `holds the ${faction} alliance`);
   }
   next = { ...next, alliances: { ...next.alliances, [faction]: newHolder ?? undefined } };
   return impLog(next, {
@@ -217,6 +247,7 @@ export function applyGains(
   state: ImpGameState,
   pid: PlayerId,
   gains: Gains | undefined,
+  vpAttribution: { source: VpSource; detail: string } = { source: 'other', detail: 'reward' },
 ): { state: ImpGameState; troopsRecruited: number } {
   if (!gains) return { state, troopsRecruited: 0 };
   let next = state;
@@ -252,7 +283,7 @@ export function applyGains(
     });
   }
   if (gains.vp) {
-    next = patchPlayer(next, pid, { vp: p().vp + gains.vp });
+    next = awardVp(next, pid, gains.vp, vpAttribution.source, vpAttribution.detail);
     next = impLog(next, { event: 'vp.gained', text: `${p().name} gains ${gains.vp} VP.` });
   }
   if (gains.persuasion) next = patchPlayer(next, pid, { persuasion: p().persuasion + gains.persuasion });
@@ -366,7 +397,7 @@ export function acquireCard(state: ImpGameState, pid: PlayerId, defId: CardDefId
     data: { defId },
   });
   if (def.acquireGains) {
-    next = applyGains(next, pid, def.acquireGains).state;
+    next = applyGains(next, pid, def.acquireGains, { source: 'card', detail: def.name }).state;
   }
   return next;
 }

@@ -252,6 +252,25 @@ export interface ImpLeaderDef {
 // Runtime state
 // ---------------------------------------------------------------------------
 
+/** Where a victory point came from — powers the end-game score breakdown. */
+export type VpSource =
+  | 'influenceLevel'
+  | 'alliance'
+  | 'conflict'
+  | 'control'
+  | 'card'
+  | 'endgameIntrigue'
+  | 'other';
+
+export interface VpLedgerEntry {
+  round: number;
+  source: VpSource;
+  /** Signed: positive for a gain, negative when a VP is lost (e.g. alliance handed off). */
+  amount: number;
+  /** Original-wording note for the UI. */
+  detail: string;
+}
+
 export interface ImpPlayer {
   id: PlayerId;
   name: string;
@@ -269,6 +288,8 @@ export interface ImpPlayer {
   agentsLeft: number;
   hasMentat: boolean; // holds the shared mentat agent this round
   vp: number;
+  /** Append-only record of every VP change and its cause. */
+  vpLedger: VpLedgerEntry[];
   influence: Record<ImpFactionId, number>;
   hasCouncilSeat: boolean;
   hasSwordmaster: boolean;

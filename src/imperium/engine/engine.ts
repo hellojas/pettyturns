@@ -698,7 +698,7 @@ function applyBuy(state: ImpGameState, action: BuyCardAction): ImpGameState {
       data: { cardId, cost: def.cost },
       at: action.at,
     });
-    if (def.acquireGains) next = applyGains(next, pid, def.acquireGains).state;
+    if (def.acquireGains) next = applyGains(next, pid, def.acquireGains, { source: 'card', detail: def.name }).state;
     return next;
   }
 
@@ -808,7 +808,10 @@ function resolveCombat(state: ImpGameState): ImpGameState {
             text: `${next.players[pid].name} takes the ${ordinal(rewardPlace)}-place reward (strength ${group.strength}${group.pids.length > 1 ? ', tied' : ''}).`,
             data: { pid, place: rewardPlace, strength: group.strength },
           });
-          next = applyGains(next, pid, reward.gains).state;
+          next = applyGains(next, pid, reward.gains, {
+            source: 'conflict',
+            detail: `${conflict.name} (${ordinal(rewardPlace)} place)`,
+          }).state;
         } else {
           next = impLog(next, {
             event: 'combat.noReward',
@@ -997,7 +1000,8 @@ function finalScoring(state: ImpGameState): ImpGameState {
             : `${next.players[pid].name} reveals an endgame intrigue: ${def.name} (no VP).`,
         data: { intrigueDefId: def.id, vp },
       });
-      if (vp > 0) next = applyGains(next, pid, { vp }).state;
+      if (vp > 0)
+        next = applyGains(next, pid, { vp }, { source: 'endgameIntrigue', detail: def.name }).state;
     }
   }
 

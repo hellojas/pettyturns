@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import ImpBoard from '../components/ImpBoard';
 import ImpConflict from '../components/ImpConflict';
 import ImpDecision from '../components/ImpDecision';
+import ImpGameOver from '../components/ImpGameOver';
 import ImpHand from '../components/ImpHand';
 import ImpLog from '../components/ImpLog';
 import ImpMarket from '../components/ImpMarket';
@@ -80,6 +81,12 @@ export default function Game() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-4">
           <div className="space-y-4">
+            {view.phase === 'finished' && (
+              <section className="panel border-amber-600">
+                <h2 className="panel-title">Final results</h2>
+                <ImpGameOver view={view} />
+              </section>
+            )}
             <section className="panel">
               <h2 className="panel-title">Players</h2>
               <ImpPlayerMat view={view} viewingAs={viewingAs} onViewAs={setViewingAs} />
