@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createImperiumGame, type ImpSeat } from '../imperium/engine/setup';
 import { impApply, impAllowedActions, impValidate } from '../imperium/engine/engine';
+import { chooseBotAction } from '../imperium/engine/bot';
 import { stateAfter } from '../imperium/engine/replay';
 import { getVisibleImperiumState } from '../imperium/engine/visibility';
 import type {
@@ -42,6 +43,8 @@ interface PersistedGame {
   initial: ImpGameState;
   journal: ImpAction[];
   cursor: number;
+  /** Seats driven by the heuristic AI. */
+  botSeats?: PlayerId[];
 }
 
 function readIndex(): ImpSavedMeta[] {
@@ -52,8 +55,15 @@ function readIndex(): ImpSavedMeta[] {
   }
 }
 
-function persist(gameId: string, initial: ImpGameState, journal: ImpAction[], cursor: number, live: ImpGameState): void {
-  const record: PersistedGame = { schema: 2, initial, journal, cursor };
+function persist(
+  gameId: string,
+  initial: ImpGameState,
+  journal: ImpAction[],
+  cursor: number,
+  live: ImpGameState,
+  botSeats: PlayerId[],
+): void {
+  const record: PersistedGame = { schema: 2, initial, journal, cursor, botSeats };
   localStorage.setItem(gameKey(gameId), JSON.stringify(record));
   const meta: ImpSavedMeta = {
     gameId,
@@ -67,23 +77,36 @@ function persist(gameId: string, initial: ImpGameState, journal: ImpAction[], cu
 }
 
 /** Load a persisted game, tolerating pre-journal (schema 1, raw-state) saves. */
-function loadRecord(gameId: string): { initial: ImpGameState; journal: ImpAction[]; cursor: number } | null {
+function loadRecord(
+  gameId: string,
+): { initial: ImpGameState; journal: ImpAction[]; cursor: number; botSeats: PlayerId[] } | null {
   const raw = localStorage.getItem(gameKey(gameId));
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
     if (parsed && parsed.schema === 2 && parsed.initial) {
       const rec = parsed as PersistedGame;
-      return { initial: rec.initial, journal: rec.journal ?? [], cursor: rec.cursor ?? (rec.journal?.length ?? 0) };
+      return {
+        initial: rec.initial,
+        journal: rec.journal ?? [],
+        cursor: rec.cursor ?? (rec.journal?.length ?? 0),
+        botSeats: rec.botSeats ?? [],
+      };
     }
     // legacy: the whole blob is a raw game state → load with no undo history
     if (parsed && parsed.players && parsed.playerOrder) {
-      return { initial: parsed as ImpGameState, journal: [], cursor: 0 };
+      return { initial: parsed as ImpGameState, journal: [], cursor: 0, botSeats: [] };
     }
     return null;
   } catch {
     return null;
   }
+}
+
+/** The player the engine is currently waiting on (decision owner, else the turn). */
+export function currentActor(state: ImpGameState): PlayerId | null {
+  if (state.phase === 'finished') return null;
+  return state.pendingDecisions[0]?.playerId ?? state.turn;
 }
 
 export const listImpGames = readIndex;
@@ -109,13 +132,16 @@ interface ImpStore {
   journal: ImpAction[];
   cursor: number;
   state: ImpGameState | null;
+  botSeats: PlayerId[];
   viewingAs: PlayerId | 'SPECTATOR';
   pending: PendingPlay | null;
   lastError: string | null;
 
-  newGame(seats: Array<{ name: string; leaderId: LeaderId }>, seed?: number): string;
+  newGame(seats: Array<{ name: string; leaderId: LeaderId; isBot?: boolean }>, seed?: number): string;
   loadGame(gameId: string): boolean;
   dispatch(action: ImpDispatchable): void;
+  /** Advance every consecutive bot move until a human is up or the game ends. */
+  runBots(): void;
   undo(): void;
   redo(): void;
   setViewingAs(viewer: PlayerId | 'SPECTATOR'): void;
@@ -129,6 +155,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   journal: [],
   cursor: 0,
   state: null,
+  botSeats: [],
   viewingAs: 'SPECTATOR',
   pending: null,
   lastError: null,
@@ -140,20 +167,26 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       name: s.name || `Player ${i + 1}`,
       leaderId: s.leaderId,
     }));
+    const botSeats = seatInputs
+      .map((s, i) => (s.isBot ? `p${i + 1}` : null))
+      .filter((x): x is string => x !== null);
     const initial = createImperiumGame({
       gameId,
       seed: seed ?? Math.floor(Math.random() * 2 ** 31),
       createdAt: new Date().toISOString(),
       seats,
     });
-    persist(gameId, initial, [], 0, initial);
+    persist(gameId, initial, [], 0, initial, botSeats);
+    // prefer to view as the first human seat
+    const firstHuman = seats.map((s) => s.playerId).find((pid) => !botSeats.includes(pid)) ?? seats[0].playerId;
     set({
       gameId,
       initial,
       journal: [],
       cursor: 0,
       state: initial,
-      viewingAs: seats[0].playerId,
+      botSeats,
+      viewingAs: firstHuman,
       pending: null,
       lastError: null,
     });
@@ -164,13 +197,16 @@ export const useImpStore = create<ImpStore>((set, get) => ({
     const rec = loadRecord(gameId);
     if (!rec) return false;
     const state = stateAfter(rec.initial, rec.journal, rec.cursor);
+    const firstHuman =
+      state.playerOrder.find((pid) => !rec.botSeats.includes(pid)) ?? state.playerOrder[0] ?? 'SPECTATOR';
     set({
       gameId,
       initial: rec.initial,
       journal: rec.journal,
       cursor: rec.cursor,
       state,
-      viewingAs: state.playerOrder[0] ?? 'SPECTATOR',
+      botSeats: rec.botSeats,
+      viewingAs: firstHuman,
       pending: null,
       lastError: null,
     });
@@ -178,7 +214,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   },
 
   dispatch(action) {
-    const { state, initial, journal, cursor, gameId } = get();
+    const { state, initial, journal, cursor, gameId, botSeats } = get();
     if (!state || !initial || !gameId) return;
     const stamped = { ...action, at: new Date().toISOString() } as ImpAction;
     const verdict = impValidate(state, stamped);
@@ -191,29 +227,54 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       // truncate any redo tail, then append this action
       const newJournal = [...journal.slice(0, cursor), stamped];
       const newCursor = newJournal.length;
-      persist(gameId, initial, newJournal, newCursor, next);
+      persist(gameId, initial, newJournal, newCursor, next, botSeats);
       set({ journal: newJournal, cursor: newCursor, state: next, lastError: null, pending: null });
     } catch (err) {
       set({ lastError: err instanceof Error ? err.message : String(err) });
     }
   },
 
+  runBots() {
+    const s0 = get();
+    if (!s0.state || !s0.initial || !s0.gameId || s0.botSeats.length === 0) return;
+    let { state, journal, cursor } = s0;
+    const { initial, gameId, botSeats } = s0;
+    let advanced = false;
+    // bounded: a full game is a few hundred actions; the cap only guards bugs
+    for (let i = 0; i < 2000; i++) {
+      const actor = currentActor(state);
+      if (!actor || !botSeats.includes(actor)) break;
+      const action = chooseBotAction(state, actor);
+      if (!action) break;
+      const stamped = { ...action, at: new Date().toISOString() } as ImpAction;
+      if (!impValidate(state, stamped).ok) break;
+      state = impApply(state, stamped);
+      journal = [...journal.slice(0, cursor), stamped];
+      cursor = journal.length;
+      advanced = true;
+    }
+    if (advanced) {
+      persist(gameId, initial, journal, cursor, state, botSeats);
+      set({ journal, cursor, state, pending: null, lastError: null });
+    }
+  },
+
   undo() {
-    const { initial, journal, cursor, gameId, viewingAs } = get();
+    const { initial, journal, cursor, gameId, viewingAs, botSeats } = get();
     if (!initial || !gameId || cursor <= 0) return;
     const newCursor = cursor - 1;
     const state = stateAfter(initial, journal, newCursor);
-    persist(gameId, initial, journal, newCursor, state);
+    persist(gameId, initial, journal, newCursor, state, botSeats);
     const stillSeated = viewingAs === 'SPECTATOR' || state.players[viewingAs] ? viewingAs : 'SPECTATOR';
     set({ cursor: newCursor, state, viewingAs: stillSeated, pending: null, lastError: null });
   },
 
   redo() {
-    const { initial, journal, cursor, gameId } = get();
+    const { initial, journal, cursor, gameId, botSeats } = get();
     if (!initial || !gameId || cursor >= journal.length) return;
     const newCursor = cursor + 1;
     const state = stateAfter(initial, journal, newCursor);
-    persist(gameId, initial, journal, newCursor, state);
+    persist(gameId, initial, journal, newCursor, state, botSeats);
     set({ cursor: newCursor, state, pending: null, lastError: null });
   },
 
@@ -235,13 +296,28 @@ export function useImpView(): {
   viewingAs: PlayerId | 'SPECTATOR';
   canUndo: boolean;
   canRedo: boolean;
+  botToMove: boolean;
+  botSeats: PlayerId[];
 } {
   const state = useImpStore((s) => s.state);
   const viewingAs = useImpStore((s) => s.viewingAs);
   const cursor = useImpStore((s) => s.cursor);
   const journalLen = useImpStore((s) => s.journal.length);
-  if (!state) return { full: null, view: null, allowed: [], viewingAs, canUndo: false, canRedo: false };
+  const botSeats = useImpStore((s) => s.botSeats);
+  if (!state)
+    return { full: null, view: null, allowed: [], viewingAs, canUndo: false, canRedo: false, botToMove: false, botSeats };
   const view = getVisibleImperiumState(state, viewingAs);
   const allowed = viewingAs === 'SPECTATOR' ? [] : impAllowedActions(state, viewingAs);
-  return { full: state, view, allowed, viewingAs, canUndo: cursor > 0, canRedo: cursor < journalLen };
+  const actor = currentActor(state);
+  const botToMove = actor !== null && botSeats.includes(actor);
+  return {
+    full: state,
+    view,
+    allowed,
+    viewingAs,
+    canUndo: cursor > 0,
+    canRedo: cursor < journalLen,
+    botToMove,
+    botSeats,
+  };
 }

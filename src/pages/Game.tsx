@@ -19,7 +19,8 @@ export default function Game() {
   const clearError = useImpStore((s) => s.clearError);
   const undo = useImpStore((s) => s.undo);
   const redo = useImpStore((s) => s.redo);
-  const { full, view, viewingAs, canUndo, canRedo } = useImpView();
+  const runBots = useImpStore((s) => s.runBots);
+  const { full, view, viewingAs, canUndo, canRedo, botToMove } = useImpView();
 
   useEffect(() => {
     if (gameId && (!full || full.gameId !== gameId)) loadGame(gameId);
@@ -52,6 +53,11 @@ export default function Game() {
             </span>
           )}
           <div className="ml-auto flex items-center gap-3">
+            {botToMove && view.phase !== 'finished' && (
+              <button className="btn !py-0.5 !px-2" onClick={runBots} title="Let the AI take its turn(s)">
+                ▶ Play bot turn
+              </button>
+            )}
             <div className="flex gap-1">
               <button
                 className="btn-secondary !py-0.5 !px-2 disabled:opacity-40"

@@ -6,6 +6,7 @@ import { useImpStore } from '../lib/impStore';
 interface SeatDraft {
   name: string;
   leaderId: string;
+  isBot?: boolean;
 }
 
 /** Game creation: 2–4 seats, unique leaders, optional seed. */
@@ -49,6 +50,10 @@ export default function NewGame() {
                   </option>
                 ))}
               </select>
+              <label className="flex items-center gap-1 text-xs text-sand-100/60" title="Let the AI play this seat">
+                <input type="checkbox" checked={!!seat.isBot} onChange={(e) => update(i, { isBot: e.target.checked })} />
+                Bot
+              </label>
               {seats.length > 2 && (
                 <button className="btn-secondary" onClick={() => setSeats(seats.filter((_, j) => j !== i))}>
                   ✕
@@ -84,7 +89,7 @@ export default function NewGame() {
           disabled={!ready}
           onClick={() => {
             const gameId = newGame(
-              seats.map((s) => ({ name: s.name, leaderId: s.leaderId })),
+              seats.map((s) => ({ name: s.name, leaderId: s.leaderId, isBot: s.isBot })),
               seed ? Number(seed) : undefined,
             );
             navigate(`/game/${gameId}`);
