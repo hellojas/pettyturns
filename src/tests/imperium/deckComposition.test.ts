@@ -9,6 +9,7 @@ import { IMP_INTRIGUE_DEFS, IMP_INTRIGUE_LIST } from '../../imperium/data/intrig
 import { IMP_CONFLICT_LIST } from '../../imperium/data/conflicts';
 import { CONTROL_SPACE_IDS } from '../../imperium/data/spaces';
 import { IMP_CONSTANTS } from '../../imperium/data/constants';
+import { IMP_FACTION_INFLUENCE_REWARDS } from '../../imperium/data/factions';
 import { applyGains } from '../../imperium/engine/effects';
 import { IMP_FACTIONS } from '../../imperium/types';
 import type { Costs, Gains } from '../../imperium/types';
@@ -173,6 +174,25 @@ describe('conflict pool composition', () => {
     expect(countTier(1)).toBeGreaterThanOrEqual(IMP_CONSTANTS.conflictMix.tier1);
     expect(countTier(2)).toBeGreaterThanOrEqual(IMP_CONSTANTS.conflictMix.tier2);
     expect(countTier(3)).toBeGreaterThanOrEqual(IMP_CONSTANTS.conflictMix.tier3);
+  });
+});
+
+describe('faction influence-track rewards composition', () => {
+  it('every reward sits on a valid track level and grants no influence', () => {
+    for (const faction of IMP_FACTIONS) {
+      const rewards = IMP_FACTION_INFLUENCE_REWARDS[faction];
+      for (const [levelKey, gains] of Object.entries(rewards)) {
+        const level = Number(levelKey);
+        expect(Number.isInteger(level) && level >= 1 && level <= IMP_CONSTANTS.influenceMax,
+          `${faction} reward level '${levelKey}'`).toBe(true);
+        expect(gains, `${faction} L${level}: reward gains`).toBeTruthy();
+        if (!gains) continue;
+        // Awarding influence from inside an influence crossing would recurse.
+        expect(gains.influence, `${faction} L${level}: reward must not grant influence`).toBeUndefined();
+        expect(gains.anyInfluence, `${faction} L${level}: reward must not grant anyInfluence`).toBeUndefined();
+        checkGainsReferences(gains, `${faction} influence reward L${level}`);
+      }
+    }
   });
 });
 

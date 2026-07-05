@@ -19,6 +19,9 @@ and stays playable, but Imperium is the product now.
 - **Endgame intrigue conditions — DONE (was next step #2).** Endgame intrigue
   cards no longer all score a flat point; each may carry an `endgameCondition`
   data predicate that gates or scales its `gains.vp`. See the section below.
+- **Faction influence-track step rewards — DONE.** Reaching a level on a faction
+  influence track now grants that level's configured resource reward (on top of
+  the VP levels and the alliance). See the section below.
 
 ### Pending-decision system (how it works)
 
@@ -71,6 +74,28 @@ and stays playable, but Imperium is the product now.
   (metric valid, influence needs a faction, ≤1 scoring shape, `per`>0). UI:
   `ImpHand.tsx` shows each endgame card's scoring summary via `describeEndgame`.
   Tests: `src/tests/imperium/endgameScoring.test.ts` (helper `giveIntrigue`).
+
+### Faction influence-track step rewards (how it works)
+
+- `IMP_FACTION_INFLUENCE_REWARDS` (`data/factions.ts`) maps each faction to a
+  per-level `Gains` reward: reaching that level on the track (upward crossing
+  only) grants it once. All values are VERIFY placeholders (currently rewards at
+  levels 1 and 3 per faction — thematic resources/troops/cards/intrigue).
+- Applied inside `addInfluence` (`effects.ts`): for every level in
+  `(before, after]` on an upward move it runs the reward through `applyGains`
+  and logs `influence.reward {pid, faction, level}`. These stack with the VP at
+  `influenceVpLevels` and the alliance at `allianceLevel` — a single 0→4 jump
+  fires both level rewards, both VPs, and the alliance in one call.
+- **Asymmetry (intentional):** VP is symmetric (given up on a downward crossing),
+  but resource rewards are NOT clawed back — a spent resource can't be un-spent.
+  So dropping below a level and re-climbing it re-grants the reward. Documented
+  and tested (`factionInfluence.test.ts`).
+- **No-recursion invariant:** a step reward must not grant `influence`/
+  `anyInfluence` (would recurse through `addInfluence`). The composition guard
+  (`deckComposition.test.ts`) enforces this plus valid level bounds and
+  reference-checks the gains. To extend: edit `data/factions.ts` only.
+- UI: `ImpPlayerMat.tsx` influence chips carry a tooltip listing every track
+  milestone (rewards + VP + alliance), ticking the ones the player has passed.
 
 ## DEPLOY — GitHub Pages (user deploys this themselves)
 
@@ -126,6 +151,7 @@ src/imperium/            ← THE GAME (Dune: Imperium)
                          (~21 imperium cards — representative, meant to grow)
     intrigue.ts          plot/combat/endgame SUBSET (~14 cards)
     conflicts.ts         12 conflict cards in 3 tiers (placeholder rewards)
+    factions.ts          per-faction influence-track step rewards (VERIFY)
     leaders.ts           8 leaders; signet + data-driven passives IMPLEMENTED
                          (all 8 machine-enforced; Paul = onReveal deckPeek via
                          the pending-decision system)

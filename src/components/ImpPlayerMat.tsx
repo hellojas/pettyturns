@@ -1,5 +1,7 @@
 import { IMP_LEADERS } from '../imperium/data/leaders';
-import { IMP_FACTIONS, type ImpVisibleState, type PlayerId } from '../imperium/types';
+import { IMP_FACTION_INFLUENCE_REWARDS } from '../imperium/data/factions';
+import { IMP_CONSTANTS } from '../imperium/data/constants';
+import { IMP_FACTIONS, type Gains, type ImpFactionId, type ImpVisibleState, type PlayerId } from '../imperium/types';
 
 const PLAYER_DOTS = ['#2e7d32', '#b71c1c', '#4a148c', '#e65100'];
 const FACTION_SHORT: Record<string, string> = {
@@ -8,6 +10,40 @@ const FACTION_SHORT: Record<string, string> = {
   beneGesserit: 'BG',
   fremen: 'FRM',
 };
+
+/** Short original-wording summary of a step reward's Gains. */
+function describeGains(g: Gains): string {
+  const parts: string[] = [];
+  if (g.solari) parts.push(`+${g.solari} solari`);
+  if (g.spice) parts.push(`+${g.spice} spice`);
+  if (g.water) parts.push(`+${g.water} water`);
+  if (g.troops) parts.push(`+${g.troops} troops`);
+  if (g.drawCards) parts.push(`draw ${g.drawCards}`);
+  if (g.intrigueCards) parts.push(`+${g.intrigueCards} intrigue`);
+  if (g.vp) parts.push(`+${g.vp} VP`);
+  return parts.join(', ');
+}
+
+/** Tooltip listing a faction track's milestones, marking which the player has passed. */
+function factionTrackTooltip(faction: ImpFactionId, current: number, hasAlliance: boolean): string {
+  const rewards = IMP_FACTION_INFLUENCE_REWARDS[faction];
+  const lines = [`${faction} influence: ${current}`];
+  const vpLevels: number[] = [...IMP_CONSTANTS.influenceVpLevels];
+  const levels = new Set<number>([
+    ...Object.keys(rewards).map(Number),
+    ...vpLevels,
+    IMP_CONSTANTS.allianceLevel,
+  ]);
+  for (const level of [...levels].sort((a, b) => a - b)) {
+    const bits: string[] = [];
+    if (rewards[level]) bits.push(describeGains(rewards[level]!));
+    if (vpLevels.includes(level)) bits.push('+1 VP');
+    if (level === IMP_CONSTANTS.allianceLevel) bits.push('alliance');
+    lines.push(`${current >= level ? '✓' : '•'} L${level}: ${bits.join(', ')}`);
+  }
+  if (hasAlliance) lines.push('— holds the alliance');
+  return lines.join('\n');
+}
 
 /** Hover text for a leader: its passive summaries plus any note-only ability. */
 function leaderTooltip(leaderId: string): string {
@@ -68,7 +104,7 @@ export default function ImpPlayerMat({
                 <span
                   key={f}
                   className={view.alliances[f] === pid ? 'text-amber-300 font-bold' : 'text-sand-100/50'}
-                  title={`${f} influence${view.alliances[f] === pid ? ' — holds the alliance' : ''}`}
+                  title={factionTrackTooltip(f, p.influence[f], view.alliances[f] === pid)}
                 >
                   {FACTION_SHORT[f]} {p.influence[f]}
                   {view.alliances[f] === pid ? '★' : ''}

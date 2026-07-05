@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { impValidate } from '../../imperium/engine/engine';
+import { IMP_FACTION_INFLUENCE_REWARDS } from '../../imperium/data/factions';
 import { apply, makeImp, patch, setHand } from './helpers';
 
 describe('agent turns', () => {
@@ -36,7 +37,9 @@ describe('agent turns', () => {
     const diplomacy = s.hidden.p1.hand[0];
     s = apply(s, { type: 'imp/playCard', playerId: 'p1', cardId: diplomacy, spaceId: 'hardyWarriors' });
     const p1 = s.players.p1;
-    expect(p1.water).toBe(0); // paid 1 water
+    // paid 1 water for the space; reaching fremen influence level 1 refunds the
+    // level's step reward (currently +1 water — see data/factions.ts).
+    expect(p1.water).toBe(0 + (IMP_FACTION_INFLUENCE_REWARDS.fremen[1]?.water ?? 0));
     expect(p1.garrison).toBe(3 + 2); // 2 troops recruited
     expect(p1.influence.fremen).toBe(1); // visit influence
     expect(p1.agentsLeft).toBe(1);

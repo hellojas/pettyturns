@@ -1,5 +1,6 @@
 import { nextInt, shuffle } from '../../game/engine/rng';
 import { IMP_CONSTANTS } from '../data/constants';
+import { IMP_FACTION_INFLUENCE_REWARDS } from '../data/factions';
 import { IMP_CARD_DEFS } from '../data/cards';
 import type {
   CardDefId,
@@ -121,6 +122,22 @@ export function addInfluence(state: ImpGameState, pid: PlayerId, faction: ImpFac
     }.`,
     data: { pid, faction, before, after, vpDelta },
   });
+  // Step rewards fire once per level newly reached on the way up. Resources
+  // already collected can't be handed back, so a downward crossing grants
+  // nothing. Rewards never grant influence (guarded), so this can't recurse.
+  if (after > before) {
+    const rewards = IMP_FACTION_INFLUENCE_REWARDS[faction];
+    for (let level = before + 1; level <= after; level++) {
+      const reward = rewards[level];
+      if (!reward) continue;
+      next = applyGains(next, pid, reward).state;
+      next = impLog(next, {
+        event: 'influence.reward',
+        text: `${next.players[pid].name} claims the ${faction} influence reward at level ${level}.`,
+        data: { pid, faction, level },
+      });
+    }
+  }
   return reevaluateAlliance(next, faction);
 }
 
