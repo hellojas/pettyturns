@@ -42,8 +42,19 @@ has only this file + the repo.
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
   fast-forwarded to match (both even after this handoff commit).
-- `npm test` → **331 passing** (26 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- `npm test` → **337 passing** (27 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- The hourly autonomous trigger has been DELETED (it wasn't producing) — we now
+  build interactively in the main session. Do NOT re-arm it unless asked.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
+- **Heuristic AI opponent (bot seats) — DONE.** `engine/bot.ts` exposes a pure
+  `chooseBotAction(state, pid)`; every candidate is impValidate-checked so it
+  can't act illegally. Seats can be flagged `isBot` at `/new`; the store keeps
+  `botSeats` (persisted) and `runBots()` advances consecutive bot moves (each
+  journaled → undo still works). `Game.tsx` shows a "Play bot turn" button when
+  a bot is the current actor. Tests: `bot.test.ts` (purity, never-illegal,
+  full all-bot games reach a winner, bots fight + buy). Next polish ideas:
+  auto-run bots on a timer (careful w/ undo), combat-intrigue play, smarter
+  buy valuation.
 - **VP source ledger + end-game results screen — DONE.** Every VP change routes
   through `awardVp()` in `effects.ts`, appending a signed
   `VpLedgerEntry { round, source, amount, detail }` to `player.vpLedger`
