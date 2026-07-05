@@ -5,6 +5,39 @@ worker placement, 2–4 players) for people who own the physical game. An earlie
 implementation of the **classic 1979 Dune** board game also lives in this repo
 and stays playable, but Imperium is the product now.
 
+## ⟳ AUTONOMOUS BUILD LOOP — READ FIRST IF YOU WERE FIRED BY A TRIGGER
+
+An hourly trigger named **`auto-build-imperium`** spawns a fresh session each
+hour to advance this project unattended. If that's you, do **exactly ONE
+iteration**, then end your turn:
+
+1. Read this whole file. Pick the **single** highest-priority item from
+   **"Next steps"** that is implementable **without external setup** (no
+   Supabase account, API keys, or the GitHub Pages toggle — those are the
+   user's to do).
+2. **If nothing is implementable** (list empty, or only external-setup items
+   remain): append a note at the top of "Current state" saying the loop
+   finished, then **stop the loop** — call `list_triggers`, find
+   `auto-build-imperium`, and `delete_trigger` it. Do not commit code. Done.
+3. Otherwise implement that ONE feature, honoring the Ground rules below
+   (mechanics-as-data, VERIFY configs, engine purity, no rulebook/card text).
+   Prefer engine-first, well-tested work. Keep it to one feature.
+4. Run `npx tsc --noEmit` and `npm test`. **If either fails and you can't fix
+   it quickly, `git checkout -- .` (discard your work) and STOP — never commit
+   or push red code.**
+5. When green: commit on `claude/dune-rules-engine-u4e8vz`, then
+   `git checkout master && git merge --ff-only … && git push origin master`.
+   Use the same `Co-Authored-By:` + `Claude-Session:` trailers as prior commits
+   (copy from `git log`). **If the master push is rejected** (a concurrent run
+   advanced it): `git reset --hard origin/master` and STOP — do not force.
+6. Rewrite the relevant parts of this file: mark the feature done in "Current
+   state", refresh the test count, and reprioritize "Next steps". Commit + push
+   that too. Then end your turn (the next hourly firing continues).
+
+Guardrails: one feature per run; green-or-revert; never force-push; never fake a
+feature that needs external setup; keep HANDOFF.md accurate — the next session
+has only this file + the repo.
+
 ## Current state (as of this handoff)
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
