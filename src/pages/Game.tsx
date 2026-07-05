@@ -16,7 +16,9 @@ export default function Game() {
   const setViewingAs = useImpStore((s) => s.setViewingAs);
   const lastError = useImpStore((s) => s.lastError);
   const clearError = useImpStore((s) => s.clearError);
-  const { full, view, viewingAs } = useImpView();
+  const undo = useImpStore((s) => s.undo);
+  const redo = useImpStore((s) => s.redo);
+  const { full, view, viewingAs, canUndo, canRedo } = useImpView();
 
   useEffect(() => {
     if (gameId && (!full || full.gameId !== gameId)) loadGame(gameId);
@@ -48,12 +50,32 @@ export default function Game() {
               Game over — {view.players[view.winner].name} wins!
             </span>
           )}
-          <span className="text-xs text-sand-100/40 ml-auto">
-            viewing as{' '}
-            <span className="text-sand-200">
-              {viewingAs === 'SPECTATOR' ? 'spectator' : view.players[viewingAs].name}
+          <div className="ml-auto flex items-center gap-3">
+            <div className="flex gap-1">
+              <button
+                className="btn-secondary !py-0.5 !px-2 disabled:opacity-40"
+                disabled={!canUndo}
+                onClick={undo}
+                title="Undo the last action"
+              >
+                ↶ Undo
+              </button>
+              <button
+                className="btn-secondary !py-0.5 !px-2 disabled:opacity-40"
+                disabled={!canRedo}
+                onClick={redo}
+                title="Redo"
+              >
+                ↷ Redo
+              </button>
+            </div>
+            <span className="text-xs text-sand-100/40">
+              viewing as{' '}
+              <span className="text-sand-200">
+                {viewingAs === 'SPECTATOR' ? 'spectator' : view.players[viewingAs].name}
+              </span>
             </span>
-          </span>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr_300px] gap-4">
