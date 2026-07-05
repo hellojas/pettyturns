@@ -9,8 +9,16 @@ and stays playable, but Imperium is the product now.
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
   fast-forwarded to match (both even after this handoff commit).
-- `npm test` → **312 passing** (23 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- `npm test` → **325 passing** (25 files). `npx tsc --noEmit` clean. `npm run build` clean.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
+- **Undo/redo — DONE.** The hotseat store is now JOURNAL-backed, not
+  snapshot-backed: it persists `{ initial, journal, cursor }` and derives the
+  live state via `engine/replay.ts` (`replayImperiumGame` / `stateAfter` fold
+  `impApply` over the recorded actions). Undo moves the cursor back, redo
+  forward, a fresh dispatch truncates the redo tail. Legacy raw-state saves
+  still load (no history). Tests: `replay.test.ts`. This also de-risks async
+  multiplayer — the server can persist the same journal and reconcile by
+  replay. Undo/Redo buttons live in the `Game.tsx` header.
 - Card pool grown with a `deckComposition` guard test (see below); still VERIFY.
 - **Choice prompts / pending-decision system — DONE (was next step #1).**
   `anyInfluence`, optional `trashCards`, and Paul's foresight are now real
@@ -163,7 +171,11 @@ src/imperium/            ← THE GAME (Dune: Imperium)
                          combat resolution, makers/recall, endgame scoring,
                          leaderPassives() hooks
     visibility.ts        getVisibleImperiumState
-src/lib/impStore.ts      Zustand hotseat store (localStorage 'imperium:*')
+src/lib/impStore.ts      Zustand hotseat store, JOURNAL-backed
+                         ({ initial, journal, cursor }; localStorage
+                         'imperium:*'); undo/redo derive state via replay
+src/imperium/engine/replay.ts  replayImperiumGame / stateAfter (pure fold of
+                         impApply; undo/redo + future server reconciliation)
 src/pages/, src/components/Imp*.tsx   Imperium UI at routes / /new /game/:id
 src/tests/imperium/      9 files (setup/agentTurns/revealAndBuy/influence/combat/
                          rounds/visibility/leaderPassives + helpers.ts).
@@ -219,9 +231,13 @@ owed) park a `flowResume` continuation via `settle`.
    structurally bad def. A card needing a player choice enqueues a pending
    decision — see the pending-decision section.)
 
-1. **Async multiplayer.** Store is hotseat + localStorage. Seam: move
-   authoritative state server-side (Supabase); clients send actions and receive
-   their `getVisibleImperiumState` view. Engine needs no changes.
+1. **Async multiplayer.** Store is hotseat + localStorage, now JOURNAL-backed
+   (`{ initial, journal, cursor }`). Seam: persist that journal server-side
+   (Supabase); clients append validated actions and receive their
+   `getVisibleImperiumState` view; the server reconciles/rebuilds by replay
+   (`engine/replay.ts`). Engine needs no changes. NOTE: needs the user to set up
+   Supabase (external), so it can't be fully verified in this sandbox — scope a
+   local mock adapter first.
 2. **`onAgentPlaced` choice-driven passives.** The pending-decision plumbing now
    supports this (a placement passive can enqueue a decision); no leader in the
    current config needs it yet, but the hook is ready.
