@@ -5,47 +5,29 @@ worker placement, 2–4 players) for people who own the physical game. An earlie
 implementation of the **classic 1979 Dune** board game also lives in this repo
 and stays playable, but Imperium is the product now.
 
-## ⟳ AUTONOMOUS BUILD LOOP — READ FIRST IF YOU WERE FIRED BY A TRIGGER
+## Autonomous build loop — RETIRED
 
-An hourly trigger named **`auto-build-imperium`** spawns a fresh session each
-hour to advance this project unattended. If that's you, do **exactly ONE
-iteration**, then end your turn:
-
-1. Read this whole file. Pick the **single** highest-priority item from
-   **"Next steps"** that is implementable **without external setup** (no
-   Supabase account, API keys, or the GitHub Pages toggle — those are the
-   user's to do).
-2. **If nothing is implementable** (list empty, or only external-setup items
-   remain): append a note at the top of "Current state" saying the loop
-   finished, then **stop the loop** — call `list_triggers`, find
-   `auto-build-imperium`, and `delete_trigger` it. Do not commit code. Done.
-3. Otherwise implement that ONE feature, honoring the Ground rules below
-   (mechanics-as-data, VERIFY configs, engine purity, no rulebook/card text).
-   Prefer engine-first, well-tested work. Keep it to one feature.
-4. Run `npx tsc --noEmit` and `npm test`. **If either fails and you can't fix
-   it quickly, `git checkout -- .` (discard your work) and STOP — never commit
-   or push red code.**
-5. When green: commit on `claude/dune-rules-engine-u4e8vz`, then
-   `git checkout master && git merge --ff-only … && git push origin master`.
-   Use the same `Co-Authored-By:` + `Claude-Session:` trailers as prior commits
-   (copy from `git log`). **If the master push is rejected** (a concurrent run
-   advanced it): `git reset --hard origin/master` and STOP — do not force.
-6. Rewrite the relevant parts of this file: mark the feature done in "Current
-   state", refresh the test count, and reprioritize "Next steps". Commit + push
-   that too. Then end your turn (the next hourly firing continues).
-
-Guardrails: one feature per run; green-or-revert; never force-push; never fake a
-feature that needs external setup; keep HANDOFF.md accurate — the next session
-has only this file + the repo.
+An hourly fresh-session trigger (`auto-build-imperium`) was tried and did not
+produce reliably, so it was deleted. We build interactively in the main
+session now. Do NOT re-arm it unless the user asks. (A late in-flight session
+from that trigger once landed a commit concurrently — if `master` ever moves
+under you, rebase your work onto it, keep tests green, and force-with-lease your
+own feature branch to match; never force master.)
 
 ## Current state (as of this handoff)
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
   fast-forwarded to match (both even after this handoff commit).
-- `npm test` → **337 passing** (27 files). `npx tsc --noEmit` clean. `npm run build` clean.
-- The hourly autonomous trigger has been DELETED (it wasn't producing) — we now
-  build interactively in the main session. Do NOT re-arm it unless asked.
+- `npm test` → **339 passing** (27 files). `npx tsc --noEmit` clean. `npm run build` clean.
 - HANDOFF gap #1 (leader passives) is DONE and merged.
+- **Graphical board + card visuals — DONE** (landed via a concurrent session).
+- **Bot auto-run + combat intrigue — DONE.** Bot seats now play themselves:
+  `impStore` has an `autoRun` flag (default on) and a paced stepper
+  (`scheduleBots`/`stepBot`, 500ms/move) that chains after a human action or a
+  fresh load until a human is up. Undo-safe — a module-level timer + generation
+  token; undo/redo call `cancelBots()` and never reschedule. UI: an "Auto bots"
+  toggle + manual "Play bot turn". The bot also plays its best combat intrigue
+  when committed and behind (else holds it). Tests in `bot.test.ts`.
 - **Heuristic AI opponent (bot seats) — DONE.** `engine/bot.ts` exposes a pure
   `chooseBotAction(state, pid)`; every candidate is impValidate-checked so it
   can't act illegally. Seats can be flagged `isBot` at `/new`; the store keeps
