@@ -64,6 +64,52 @@ describe('heuristic bot', () => {
     expect(fought).toBe(true);
   });
 
+  it('plays a combat intrigue when it is not already winning, then passes', () => {
+    // craft a combat where the bot (p1) is behind and holds an ambush (+swords)
+    let s = makeImp(['A', 'B'], 3);
+    const ambushId = Object.keys(s.intrigueById).find((i) => s.intrigueById[i].defId === 'ambush')!;
+    s = {
+      ...s,
+      phase: 'combat',
+      turn: 'p1',
+      combatPassed: [],
+      intrigueDeck: s.intrigueDeck.filter((i) => i !== ambushId),
+      players: {
+        ...s.players,
+        p1: { ...s.players.p1, inConflict: 1 }, // strength 2
+        p2: { ...s.players.p2, inConflict: 2 }, // strength 4 — p1 is behind
+      },
+      hidden: { ...s.hidden, p1: { ...s.hidden.p1, intrigue: [ambushId] } },
+    };
+    const action = chooseBotAction(s, 'p1');
+    expect(action).toMatchObject({ type: 'imp/playIntrigue', intrigueId: ambushId });
+    expect(impValidate(s, action!).ok).toBe(true);
+
+    // after playing it the bot is ahead (2 + 4 swords = 6 vs 4) → it should pass
+    const after = impApply(s, action!);
+    if (after.phase === 'combat' && after.turn === 'p1') {
+      expect(chooseBotAction(after, 'p1')).toMatchObject({ type: 'imp/combatPass' });
+    }
+  });
+
+  it('does not waste a combat intrigue when already winning', () => {
+    let s = makeImp(['A', 'B'], 3);
+    const ambushId = Object.keys(s.intrigueById).find((i) => s.intrigueById[i].defId === 'ambush')!;
+    s = {
+      ...s,
+      phase: 'combat',
+      turn: 'p1',
+      combatPassed: [],
+      players: {
+        ...s.players,
+        p1: { ...s.players.p1, inConflict: 3 }, // strength 6 — ahead
+        p2: { ...s.players.p2, inConflict: 1 }, // strength 2
+      },
+      hidden: { ...s.hidden, p1: { ...s.hidden.p1, intrigue: [ambushId] } },
+    };
+    expect(chooseBotAction(s, 'p1')).toMatchObject({ type: 'imp/combatPass' });
+  });
+
   it('buys cards when it has persuasion (deck grows beyond the starting 10)', () => {
     const { state } = playAllBots(6);
     const grew = state.playerOrder.some((pid) => {

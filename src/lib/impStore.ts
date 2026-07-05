@@ -133,6 +133,8 @@ interface ImpStore {
   cursor: number;
   state: ImpGameState | null;
   botSeats: PlayerId[];
+  /** When true, bot moves play themselves (paced) after each human action. */
+  autoRun: boolean;
   viewingAs: PlayerId | 'SPECTATOR';
   pending: PendingPlay | null;
   lastError: string | null;
@@ -142,11 +144,47 @@ interface ImpStore {
   dispatch(action: ImpDispatchable): void;
   /** Advance every consecutive bot move until a human is up or the game ends. */
   runBots(): void;
+  /** Apply exactly one bot move if a bot is the current actor; returns whether it did. */
+  stepBot(): boolean;
+  setAutoRun(on: boolean): void;
   undo(): void;
   redo(): void;
   setViewingAs(viewer: PlayerId | 'SPECTATOR'): void;
   setPending(pending: PendingPlay | null): void;
   clearError(): void;
+}
+
+/**
+ * Auto-run bookkeeping lives outside the store: a single pending timer and a
+ * generation token. Any state change that should cancel auto-play bumps the
+ * generation, so a timer that fires late is ignored. Auto-run is only ever
+ * (re)scheduled from a human `dispatch` or a fresh load — never from undo/redo —
+ * so undo always leaves the human in control.
+ */
+const BOT_STEP_MS = 500;
+let botTimer: ReturnType<typeof setTimeout> | null = null;
+let botGeneration = 0;
+function cancelBots(): void {
+  botGeneration++;
+  if (botTimer) {
+    clearTimeout(botTimer);
+    botTimer = null;
+  }
+}
+
+/** If auto-run is on and a bot is up, play one move after a pause, then chain. */
+function scheduleBots(): void {
+  const st = useImpStore.getState();
+  if (!st.autoRun || !st.state) return;
+  const actor = currentActor(st.state);
+  if (!actor || !st.botSeats.includes(actor)) return;
+  cancelBots();
+  const gen = botGeneration;
+  botTimer = setTimeout(() => {
+    if (gen !== botGeneration) return; // superseded by a newer action/undo
+    botTimer = null;
+    if (useImpStore.getState().stepBot()) scheduleBots();
+  }, BOT_STEP_MS);
 }
 
 export const useImpStore = create<ImpStore>((set, get) => ({
@@ -156,6 +194,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   cursor: 0,
   state: null,
   botSeats: [],
+  autoRun: true,
   viewingAs: 'SPECTATOR',
   pending: null,
   lastError: null,
@@ -190,6 +229,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       pending: null,
       lastError: null,
     });
+    scheduleBots(); // e.g. a bot is first player
     return gameId;
   },
 
@@ -210,6 +250,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       pending: null,
       lastError: null,
     });
+    scheduleBots(); // resume auto-play if a bot is up on load
     return true;
   },
 
@@ -229,12 +270,14 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       const newCursor = newJournal.length;
       persist(gameId, initial, newJournal, newCursor, next, botSeats);
       set({ journal: newJournal, cursor: newCursor, state: next, lastError: null, pending: null });
+      scheduleBots(); // after a human action, let any bots that are now up play
     } catch (err) {
       set({ lastError: err instanceof Error ? err.message : String(err) });
     }
   },
 
   runBots() {
+    cancelBots();
     const s0 = get();
     if (!s0.state || !s0.initial || !s0.gameId || s0.botSeats.length === 0) return;
     let { state, journal, cursor } = s0;
@@ -259,7 +302,30 @@ export const useImpStore = create<ImpStore>((set, get) => ({
     }
   },
 
+  stepBot() {
+    const { state, initial, journal, cursor, gameId, botSeats } = get();
+    if (!state || !initial || !gameId) return false;
+    const actor = currentActor(state);
+    if (!actor || !botSeats.includes(actor)) return false;
+    const action = chooseBotAction(state, actor);
+    if (!action) return false;
+    const stamped = { ...action, at: new Date().toISOString() } as ImpAction;
+    if (!impValidate(state, stamped).ok) return false;
+    const next = impApply(state, stamped);
+    const newJournal = [...journal.slice(0, cursor), stamped];
+    persist(gameId, initial, newJournal, newJournal.length, next, botSeats);
+    set({ journal: newJournal, cursor: newJournal.length, state: next, pending: null, lastError: null });
+    return true;
+  },
+
+  setAutoRun(on) {
+    set({ autoRun: on });
+    if (on) scheduleBots();
+    else cancelBots();
+  },
+
   undo() {
+    cancelBots(); // stepping back must not trigger auto-play
     const { initial, journal, cursor, gameId, viewingAs, botSeats } = get();
     if (!initial || !gameId || cursor <= 0) return;
     const newCursor = cursor - 1;
@@ -270,6 +336,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   },
 
   redo() {
+    cancelBots();
     const { initial, journal, cursor, gameId, botSeats } = get();
     if (!initial || !gameId || cursor >= journal.length) return;
     const newCursor = cursor + 1;
@@ -298,14 +365,26 @@ export function useImpView(): {
   canRedo: boolean;
   botToMove: boolean;
   botSeats: PlayerId[];
+  autoRun: boolean;
 } {
   const state = useImpStore((s) => s.state);
   const viewingAs = useImpStore((s) => s.viewingAs);
   const cursor = useImpStore((s) => s.cursor);
   const journalLen = useImpStore((s) => s.journal.length);
   const botSeats = useImpStore((s) => s.botSeats);
+  const autoRun = useImpStore((s) => s.autoRun);
   if (!state)
-    return { full: null, view: null, allowed: [], viewingAs, canUndo: false, canRedo: false, botToMove: false, botSeats };
+    return {
+      full: null,
+      view: null,
+      allowed: [],
+      viewingAs,
+      canUndo: false,
+      canRedo: false,
+      botToMove: false,
+      botSeats,
+      autoRun,
+    };
   const view = getVisibleImperiumState(state, viewingAs);
   const allowed = viewingAs === 'SPECTATOR' ? [] : impAllowedActions(state, viewingAs);
   const actor = currentActor(state);
@@ -319,5 +398,6 @@ export function useImpView(): {
     canRedo: cursor < journalLen,
     botToMove,
     botSeats,
+    autoRun,
   };
 }

@@ -20,7 +20,8 @@ export default function Game() {
   const undo = useImpStore((s) => s.undo);
   const redo = useImpStore((s) => s.redo);
   const runBots = useImpStore((s) => s.runBots);
-  const { full, view, viewingAs, canUndo, canRedo, botToMove } = useImpView();
+  const setAutoRun = useImpStore((s) => s.setAutoRun);
+  const { full, view, viewingAs, canUndo, canRedo, botToMove, botSeats, autoRun } = useImpView();
 
   useEffect(() => {
     if (gameId && (!full || full.gameId !== gameId)) loadGame(gameId);
@@ -53,9 +54,15 @@ export default function Game() {
             </span>
           )}
           <div className="ml-auto flex items-center gap-3">
+            {botSeats.length > 0 && (
+              <label className="flex items-center gap-1 text-xs text-sand-100/60" title="Bots play their turns automatically">
+                <input type="checkbox" checked={autoRun} onChange={(e) => setAutoRun(e.target.checked)} />
+                Auto bots
+              </label>
+            )}
             {botToMove && view.phase !== 'finished' && (
-              <button className="btn !py-0.5 !px-2" onClick={runBots} title="Let the AI take its turn(s)">
-                ▶ Play bot turn
+              <button className="btn !py-0.5 !px-2" onClick={runBots} title="Let the AI take its turn(s) now">
+                {autoRun ? '▶ Bot thinking…' : '▶ Play bot turn'}
               </button>
             )}
             <div className="flex gap-1">

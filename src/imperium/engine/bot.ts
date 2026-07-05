@@ -1,5 +1,6 @@
 import { IMP_CARD_DEFS, RESERVE_DEF_IDS } from '../data/cards';
 import { IMP_CONFLICT_DEFS } from '../data/conflicts';
+import { IMP_INTRIGUE_DEFS } from '../data/intrigue';
 import { IMP_SPACE_LIST, IMP_SPACES } from '../data/spaces';
 import type {
   BoardSpaceDef,
@@ -12,7 +13,7 @@ import type {
   PlayerId,
 } from '../types';
 import { IMP_CONSTANTS } from '../data/constants';
-import { impValidate } from './engine';
+import { combatStrength, impValidate } from './engine';
 
 /**
  * A heuristic AI opponent — a PURE function of game state. Given a bot-controlled
@@ -37,7 +38,7 @@ export function chooseBotAction(state: ImpGameState, pid: PlayerId): ImpAction |
 
   if (state.phase === 'combat') {
     if (state.turn !== pid) return null;
-    return valid(state, { type: 'imp/combatPass', playerId: pid });
+    return combatIntrigue(state, pid) ?? valid(state, { type: 'imp/combatPass', playerId: pid });
   }
 
   if (state.phase === 'playerTurns' && state.turn === pid) {
@@ -61,6 +62,36 @@ function valid(state: ImpGameState, action: ImpAction): ImpAction | null {
 function firstValid(state: ImpGameState, candidates: ImpAction[]): ImpAction | null {
   for (const a of candidates) if (impValidate(state, a).ok) return a;
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// combat
+// ---------------------------------------------------------------------------
+
+/**
+ * Play a combat intrigue only when it could change the outcome: the bot has
+ * troops committed and is not already ahead. It plays the highest-swords card
+ * that validates; otherwise it holds the card and passes.
+ */
+function combatIntrigue(state: ImpGameState, pid: PlayerId): ImpAction | null {
+  const me = state.players[pid];
+  if (me.inConflict <= 0) return null;
+  const topOther = state.playerOrder
+    .filter((p) => p !== pid && state.players[p].inConflict > 0)
+    .reduce((max, p) => Math.max(max, combatStrength(state, p)), 0);
+  if (combatStrength(state, pid) > topOther) return null; // already winning — save it
+
+  const combatCards = state.hidden[pid].intrigue
+    .filter((id) => IMP_INTRIGUE_DEFS[state.intrigueById[id].defId].kind === 'combat')
+    .sort(
+      (a, b) =>
+        (IMP_INTRIGUE_DEFS[state.intrigueById[b].defId].gains?.swords ?? 0) -
+        (IMP_INTRIGUE_DEFS[state.intrigueById[a].defId].gains?.swords ?? 0),
+    );
+  return firstValid(
+    state,
+    combatCards.map((intrigueId) => ({ type: 'imp/playIntrigue' as const, playerId: pid, intrigueId })),
+  );
 }
 
 // ---------------------------------------------------------------------------
