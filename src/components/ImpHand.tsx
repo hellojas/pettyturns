@@ -3,16 +3,8 @@ import { IMP_INTRIGUE_DEFS } from '../imperium/data/intrigue';
 import { IMP_SPACES } from '../imperium/data/spaces';
 import type { ImpVisibleState, PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
-
-const ICON_SHORT: Record<string, string> = {
-  emperor: 'E',
-  spacingGuild: 'G',
-  beneGesserit: 'B',
-  fremen: 'F',
-  landsraad: 'L',
-  city: 'C',
-  spiceTrade: 'S',
-};
+import ImpCard from './ImpCard';
+import { Icon } from './imp/icons';
 
 function defOf(view: ImpVisibleState, cardId: string) {
   return IMP_CARD_DEFS[view.cardsById[cardId].defId];
@@ -71,28 +63,19 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
       {!p.revealed && (
         <>
           <div className="text-sand-100/50 uppercase tracking-wide">Hand ({self.hand.length})</div>
-          <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-2">
             {self.hand.map((cardId) => {
               const def = defOf(view, cardId);
               const selected = pending?.cardId === cardId;
               return (
-                <button
+                <ImpCard
                   key={cardId}
+                  def={def}
+                  selected={selected}
                   disabled={!myTurn || p.agentsLeft <= 0}
+                  dimmed={(!myTurn || p.agentsLeft <= 0) && !selected}
                   onClick={() => setPending(selected ? null : { cardId, deploy: 0 })}
-                  className={`w-full text-left rounded border px-2 py-1 transition-colors ${
-                    selected
-                      ? 'border-amber-400 bg-dusk-900'
-                      : 'border-sand-900/50 bg-dusk-900/60 hover:border-sand-700 disabled:opacity-50'
-                  }`}
-                >
-                  <div className="flex gap-2 items-center">
-                    <span className="font-semibold text-sand-200">{def.name}</span>
-                    <span className="text-sand-100/40">{def.icons.map((i) => ICON_SHORT[i]).join('')}</span>
-                    {def.revealGains?.persuasion && <span className="ml-auto text-sand-300">{def.revealGains.persuasion}◈</span>}
-                    {def.revealGains?.swords && <span className="text-red-300">{def.revealGains.swords}⚔</span>}
-                  </div>
-                </button>
+                />
               );
             })}
           </div>
@@ -169,9 +152,17 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
       )}
 
       {p.revealed && !p.turnDone && myTurn && (
-        <div className="text-sand-100/60">
-          Revealed: <span className="text-sand-200 font-semibold">{p.persuasion}◈ persuasion</span>,{' '}
-          <span className="text-red-300">{p.swords}⚔ swords</span>. Buy cards on the right, then end your round.
+        <div className="text-sand-100/60 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span>Revealed:</span>
+          <span className="inline-flex items-center gap-1 text-sand-200 font-semibold">
+            <Icon name="persuasion" size={13} />
+            {p.persuasion} persuasion
+          </span>
+          <span className="inline-flex items-center gap-1 text-red-300">
+            <Icon name="sword" size={13} />
+            {p.swords} swords
+          </span>
+          <span className="w-full">Buy cards on the right, then end your round.</span>
         </div>
       )}
 
@@ -185,7 +176,10 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
               (def.kind === 'combat' && view.phase === 'combat' && view.turn === viewingAs);
             return (
               <div key={intrigueId} className="flex items-center gap-2 py-0.5">
-                <span className="text-sand-200">{def.name}</span>
+                <span className="inline-flex items-center gap-1 text-sand-200">
+                  <Icon name="intrigue" size={13} />
+                  {def.name}
+                </span>
                 <span className="text-sand-100/40">
                   {def.kind === 'endgame' ? describeEndgame(def) : def.kind}
                 </span>

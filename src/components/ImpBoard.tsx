@@ -1,54 +1,362 @@
 import { IMP_SPACE_LIST, IMP_SPACES } from '../imperium/data/spaces';
-import { IMP_CARD_DEFS } from '../imperium/data/cards';
+import { IMP_CONFLICT_DEFS } from '../imperium/data/conflicts';
+import { IMP_CONSTANTS } from '../imperium/data/constants';
 import { impValidate } from '../imperium/engine/engine';
-import type { ImpVisibleState, PlayerId, SpaceGroup } from '../imperium/types';
+import type {
+  BoardSpaceDef,
+  ImpFactionId,
+  ImpVisibleState,
+  PlayerId,
+  SpaceGroup,
+} from '../imperium/types';
+import { IMP_FACTIONS } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
+import { Icon, type IconName } from './imp/icons';
+import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
 
-const GROUPS: Array<{ key: SpaceGroup; label: string; tint: string }> = [
-  { key: 'emperor', label: 'Emperor', tint: 'border-red-900/70' },
-  { key: 'spacingGuild', label: 'Spacing Guild', tint: 'border-orange-800/70' },
-  { key: 'beneGesserit', label: 'Bene Gesserit', tint: 'border-purple-900/70' },
-  { key: 'fremen', label: 'Fremen', tint: 'border-amber-700/70' },
-  { key: 'landsraad', label: 'Landsraad', tint: 'border-sand-800' },
-  { key: 'choam', label: 'CHOAM', tint: 'border-sand-800' },
-  { key: 'city', label: 'Cities', tint: 'border-sky-900/70' },
-  { key: 'desert', label: 'Deep Desert', tint: 'border-sand-700' },
-];
+const { influenceMax, allianceLevel } = IMP_CONSTANTS;
+const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
 
-const PLAYER_DOTS = ['#2e7d32', '#b71c1c', '#4a148c', '#e65100'];
-
-function costText(space: (typeof IMP_SPACE_LIST)[number]): string {
-  const parts: string[] = [];
-  if (space.cost?.spice) parts.push(`${space.cost.spice}◉`);
-  if (space.cost?.solari) parts.push(`${space.cost.solari}$`);
-  if (space.cost?.water) parts.push(`${space.cost.water}💧`);
-  if (space.cost?.influenceRequired)
-    parts.push(`req ${space.cost.influenceRequired.min} ${space.cost.influenceRequired.faction}`);
-  if (space.special === 'sellMelange') parts.push('2–5◉');
-  return parts.join(' ');
+function specialLabel(space: BoardSpaceDef): string | null {
+  switch (space.special) {
+    case 'highCouncil':
+      return 'High Council seat';
+    case 'swordmaster':
+      return '3rd agent';
+    case 'mentat':
+      return 'extra agent';
+    case 'sellMelange':
+      return 'sell spice → solari';
+    default:
+      return null;
+  }
 }
 
-function gainText(space: (typeof IMP_SPACE_LIST)[number]): string {
-  const g = space.gains ?? {};
-  const parts: string[] = [];
-  if (g.spice) parts.push(`+${g.spice}◉`);
-  if (g.solari) parts.push(`+${g.solari}$`);
-  if (g.water) parts.push(`+${g.water}💧`);
-  if (g.troops) parts.push(`+${g.troops}⚔`);
-  if (g.drawCards) parts.push(`+${g.drawCards} card`);
-  if (g.intrigueCards) parts.push(`+${g.intrigueCards} intrigue`);
-  if (g.trashCards) parts.push('trash 1');
-  if (g.acquireReserveCard) parts.push(IMP_CARD_DEFS[g.acquireReserveCard].name);
-  if (space.special === 'highCouncil') parts.push('council seat');
-  if (space.special === 'swordmaster') parts.push('3rd agent');
-  if (space.special === 'mentat') parts.push('mentat');
-  if (space.special === 'sellMelange') parts.push('→ solari');
-  return parts.join(' ');
+/** A small colored agent disc in a player's seat color. */
+function AgentDisc({ color, title }: { color: string; title?: string }) {
+  return (
+    <span
+      className="inline-block w-3 h-3 rounded-full ring-2 ring-black/40 shrink-0"
+      style={{ background: color }}
+      title={title}
+    />
+  );
+}
+
+function ChipRow({ chips, tone }: { chips: Chip[]; tone?: 'cost' }) {
+  if (!chips.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
+      {chips.map((c, i) => (
+        <span key={i} title={c.title} className={`inline-flex items-center gap-0.5 ${tone === 'cost' ? 'text-red-200/80' : ''}`}>
+          <Icon name={c.icon} size={12} />
+          {c.text && <span className="text-[10px] font-semibold tabular-nums">{c.text}</span>}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 /**
- * The agent board: every space from config, grouped by region. When a card is
- * selected in hand, legal destinations light up; clicking one stages the play.
+ * A single board location. Keeps every interaction from the original text board
+ * (legal-target highlight, occupant disc, click-to-stage) but rendered as a
+ * physical space tile: accent spine, cost/gain icons, combat + maker + control
+ * markers, and the agent sitting on it.
+ */
+function SpaceTile({
+  space,
+  view,
+  legal,
+  selected,
+  onSelect,
+}: {
+  space: BoardSpaceDef;
+  view: ImpVisibleState;
+  legal: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const accent = GROUP_META[space.group].accent;
+  const occupant = view.occupied[space.id];
+  const occupantIdx = occupant ? view.playerOrder.indexOf(occupant) : -1;
+  const controller = view.controlledBy[space.id];
+  const controllerIdx = controller ? view.playerOrder.indexOf(controller) : -1;
+  const bonus = view.makerBonus[space.id] ?? 0;
+  const special = specialLabel(space);
+  const costs = costChips(space.cost);
+  const gains = gainsChips(space.gains);
+
+  return (
+    <button
+      disabled={!legal}
+      onClick={onSelect}
+      className={`relative w-full text-left rounded-md overflow-hidden border px-2 py-1.5 transition-all ${
+        selected
+          ? 'ring-2 ring-sand-100 -translate-y-0.5'
+          : legal
+            ? 'hover:-translate-y-0.5 cursor-pointer animate-none'
+            : ''
+      }`}
+      style={{
+        borderColor: legal || selected ? '#e3bd78' : `${accent}55`,
+        background: legal
+          ? `linear-gradient(150deg, #2c2114, #1c150f), radial-gradient(120% 120% at 50% 0%, ${accent}33, transparent 55%)`
+          : `linear-gradient(150deg, #221a12, #1a130d)`,
+        boxShadow: legal && !selected ? '0 0 0 1px #e3bd7855, 0 0 10px -2px #e3bd7877' : undefined,
+        opacity: occupant && !legal && !selected ? 0.72 : 1,
+      }}
+    >
+      <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent }} />
+      <div className="flex items-center gap-1 pl-1">
+        <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
+        {space.combat && <Icon name="sword" size={12} title="opens the conflict" />}
+        {space.maker && bonus > 0 && (
+          <span className="inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
+            <Icon name="spice" size={12} />
+            {bonus}
+          </span>
+        )}
+        {occupant && (
+          <span className="ml-auto">
+            <AgentDisc color={PLAYER_COLORS[occupantIdx % 4]} title={`agent: ${view.players[occupant].name}`} />
+          </span>
+        )}
+      </div>
+      <div className="pl-1 mt-0.5 flex items-center gap-2 flex-wrap">
+        {costs.length > 0 && (
+          <span className="inline-flex items-center gap-1">
+            <ChipRow chips={costs} tone="cost" />
+          </span>
+        )}
+        <ChipRow chips={gains} />
+        {space.influenceGain && (
+          <span className="inline-flex items-center gap-0.5" title={`+1 ${GROUP_META[space.influenceGain].label} influence`}>
+            <Icon name={space.influenceGain as IconName} size={12} />
+            <span className="text-[10px] font-semibold">+1</span>
+          </span>
+        )}
+        {special && <span className="text-[10px] text-sand-300/80">{special}</span>}
+      </div>
+      {controller && (
+        <div className="pl-1 mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
+          <AgentDisc color={PLAYER_COLORS[controllerIdx % 4]} />
+          controlled by {view.players[controller].name}
+        </div>
+      )}
+    </button>
+  );
+}
+
+/** Horizontal influence track (0…max) with each player's marker at their level. */
+function InfluenceTrack({ faction, view }: { faction: ImpFactionId; view: ImpVisibleState }) {
+  const allianceHolder = view.alliances[faction];
+  const cells = Array.from({ length: influenceMax + 1 }, (_, level) => level);
+  return (
+    <div className="flex items-stretch gap-[2px]">
+      {cells.map((level) => {
+        const here = view.playerOrder.filter((pid) => (view.players[pid].influence[faction] ?? 0) === level);
+        const isVp = VP_LEVELS.includes(level);
+        const isAlliance = level === allianceLevel;
+        return (
+          <div
+            key={level}
+            title={`influence ${level}${isVp ? ' · +1 VP' : ''}${isAlliance ? ' · alliance' : ''}`}
+            className="flex-1 min-w-0 rounded-sm flex flex-col items-center justify-end gap-[1px] py-[2px] relative"
+            style={{
+              background: level === 0 ? '#00000030' : '#ffffff0d',
+              border: isAlliance ? '1px solid #e3bd7866' : '1px solid transparent',
+            }}
+          >
+            <div className="flex flex-wrap justify-center gap-[1px] min-h-[8px] px-[1px]">
+              {here.map((pid) => (
+                <span
+                  key={pid}
+                  className="w-2 h-2 rounded-full ring-1 ring-black/40"
+                  style={{ background: PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4] }}
+                  title={`${view.players[pid].name}: ${level}`}
+                />
+              ))}
+            </div>
+            <span
+              className="text-[7px] leading-none font-bold"
+              style={{ color: isAlliance ? '#f2c94c' : isVp ? '#e3bd78' : '#f7ecd766' }}
+              title={isAlliance ? 'alliance level' : isVp ? 'victory-point level' : undefined}
+            >
+              {isAlliance ? '★' : isVp ? '✦' : level}
+            </span>
+          </div>
+        );
+      })}
+      {allianceHolder && (
+        <span className="self-center pl-1 text-[9px] text-amber-300" title={`${view.players[allianceHolder].name} holds the alliance`}>
+          ★
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** One faction region: emblem, influence track, and its two agent spaces. */
+function FactionRegion({
+  faction,
+  view,
+  legalTargets,
+  selectedSpace,
+  onSelect,
+}: {
+  faction: ImpFactionId;
+  view: ImpVisibleState;
+  legalTargets: Set<string>;
+  selectedSpace?: string;
+  onSelect: (id: string) => void;
+}) {
+  const meta = GROUP_META[faction];
+  const spaces = IMP_SPACE_LIST.filter((s) => s.group === faction);
+  return (
+    <div className="rounded-lg p-1.5 flex flex-col gap-1.5" style={{ background: `${meta.accent}12`, border: `1px solid ${meta.accent}44` }}>
+      <div className="flex items-center gap-1.5 px-0.5">
+        <Icon name={meta.icon} size={16} />
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
+          {meta.label}
+        </span>
+      </div>
+      <InfluenceTrack faction={faction} view={view} />
+      <div className="flex flex-col gap-1">
+        {spaces.map((s) => (
+          <SpaceTile
+            key={s.id}
+            space={s}
+            view={view}
+            legal={legalTargets.has(s.id)}
+            selected={selectedSpace === s.id}
+            onSelect={() => onSelect(s.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** A titled cluster of non-faction spaces (Landsraad / CHOAM / Cities / Desert). */
+function SpaceCluster({
+  group,
+  view,
+  legalTargets,
+  selectedSpace,
+  onSelect,
+  cols = 1,
+}: {
+  group: SpaceGroup;
+  view: ImpVisibleState;
+  legalTargets: Set<string>;
+  selectedSpace?: string;
+  onSelect: (id: string) => void;
+  cols?: number;
+}) {
+  const meta = GROUP_META[group];
+  const spaces = IMP_SPACE_LIST.filter((s) => s.group === group);
+  return (
+    <div className="rounded-lg p-1.5" style={{ background: `${meta.accent}10`, border: `1px solid ${meta.accent}3a` }}>
+      <div className="flex items-center gap-1.5 px-0.5 mb-1.5">
+        <Icon name={meta.icon} size={15} />
+        <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
+          {meta.label}
+        </span>
+      </div>
+      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+        {spaces.map((s) => (
+          <SpaceTile
+            key={s.id}
+            space={s}
+            view={view}
+            legal={legalTargets.has(s.id)}
+            selected={selectedSpace === s.id}
+            onSelect={() => onSelect(s.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The board's beating heart: the current conflict and its reward ladder. */
+function ConflictMedallion({ view }: { view: ImpVisibleState }) {
+  const conflict = view.currentConflict ? IMP_CONFLICT_DEFS[view.currentConflict] : null;
+  const tierColor = conflict ? ['#8a8f98', '#c98a2b', '#d24b3e'][conflict.tier - 1] : '#8a8f98';
+  const combatants = view.playerOrder.filter((pid) => view.players[pid].inConflict > 0);
+  return (
+    <div
+      className="rounded-xl p-3 flex flex-col gap-2 relative overflow-hidden h-full"
+      style={{
+        background: 'radial-gradient(120% 100% at 50% 0%, #3a281b, #1a130d 70%)',
+        border: '1px solid #7b4222aa',
+      }}
+    >
+      <div className="absolute inset-0 pointer-events-none opacity-30"
+        style={{ background: 'radial-gradient(60% 50% at 50% 45%, #e0a52b22, transparent 70%)' }} />
+      <div className="relative flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-widest text-sand-100/45">Conflict</span>
+        <span className="text-[10px] text-sand-100/50 tabular-nums">
+          round {view.round}/{view.maxRounds}
+        </span>
+      </div>
+      {conflict ? (
+        <>
+          <div className="relative flex items-center gap-2">
+            <Icon name="sword" size={20} />
+            <span className="font-semibold text-sand-100 text-[15px] leading-tight">{conflict.name}</span>
+            <span
+              className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
+              style={{ background: `${tierColor}33`, color: tierColor, border: `1px solid ${tierColor}77` }}
+            >
+              {['I', 'II', 'III'][conflict.tier - 1]}
+            </span>
+          </div>
+          <div className="relative flex flex-col gap-1 mt-0.5">
+            {conflict.rewards.map((r) => (
+              <div key={r.place} className="flex items-center gap-2">
+                <span
+                  className="text-[10px] font-bold w-6 h-5 rounded flex items-center justify-center shrink-0"
+                  style={{
+                    background: r.place === 1 ? '#e3bd7833' : '#ffffff0f',
+                    color: r.place === 1 ? '#f2c94c' : '#cdbfa8',
+                  }}
+                >
+                  {r.place === 1 ? '1st' : r.place === 2 ? '2nd' : '3rd'}
+                </span>
+                <ChipRow chips={gainsChips(r.gains)} />
+              </div>
+            ))}
+          </div>
+          <div className="relative mt-auto pt-1 border-t border-black/30 flex items-center gap-1.5 min-h-[20px]">
+            {combatants.length > 0 ? (
+              <>
+                <span className="text-[9px] uppercase tracking-wider text-red-300/70">committed</span>
+                {combatants.map((pid) => (
+                  <span key={pid} className="inline-flex items-center gap-0.5">
+                    <AgentDisc color={PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]} title={view.players[pid].name} />
+                    <span className="text-[10px] text-sand-100/70">{view.players[pid].inConflict}</span>
+                  </span>
+                ))}
+              </>
+            ) : (
+              <span className="text-[9px] text-sand-100/35 italic">no troops committed yet</span>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="text-sand-100/40 text-sm italic">No active conflict.</div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The agent board, laid out like the physical Dune: Imperium board — four
+ * faction regions with influence tracks along the top, the Landsraad and CHOAM
+ * flanking the conflict at the center, cities and the deep desert below. When a
+ * card is armed in hand, legal destinations light up; clicking one stages the
+ * play (unchanged from the original engine wiring).
  */
 export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; viewingAs: PlayerId | 'SPECTATOR' }) {
   const pending = useImpStore((s) => s.pending);
@@ -69,59 +377,41 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
     }
   }
 
+  const onSelect = (id: string) => pending && setPending({ ...pending, spaceId: id });
+  const common = { view, legalTargets, selectedSpace: pending?.spaceId, onSelect };
+
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
-      {GROUPS.map((group) => (
-        <div key={group.key} className={`rounded-lg border ${group.tint} bg-dusk-800 p-2`}>
-          <div className="text-[10px] uppercase tracking-wider text-sand-100/50 mb-1.5">{group.label}</div>
-          <div className="space-y-1.5">
-            {IMP_SPACE_LIST.filter((s) => s.group === group.key).map((space) => {
-              const occupant = view.occupied[space.id];
-              const occupantIdx = occupant ? view.playerOrder.indexOf(occupant) : -1;
-              const legal = legalTargets.has(space.id);
-              const bonus = view.makerBonus[space.id] ?? 0;
-              const controller = view.controlledBy[space.id];
-              return (
-                <button
-                  key={space.id}
-                  disabled={!legal}
-                  onClick={() => pending && setPending({ ...pending, spaceId: space.id })}
-                  className={`w-full text-left rounded px-2 py-1 text-xs border transition-colors ${
-                    pending?.spaceId === space.id
-                      ? 'border-sand-300 bg-dusk-900'
-                      : legal
-                        ? 'border-amber-500/70 bg-dusk-900 hover:border-amber-300 cursor-pointer'
-                        : 'border-sand-900/40 bg-dusk-900/50'
-                  } ${occupant ? 'opacity-70' : ''}`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-sand-200 truncate">{space.name}</span>
-                    {space.combat && <span title="opens the conflict">⚔</span>}
-                    {bonus > 0 && <span className="text-amber-400">+{bonus}◉</span>}
-                    {occupant && (
-                      <span
-                        className="ml-auto inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ background: PLAYER_DOTS[occupantIdx] }}
-                        title={`agent: ${view.players[occupant].name}`}
-                      />
-                    )}
-                  </div>
-                  <div className="text-sand-100/50 flex gap-2">
-                    {costText(space) && <span className="text-red-300/80">{costText(space)}</span>}
-                    <span>{gainText(space)}</span>
-                    {space.influenceGain && <span className="text-sand-300">+1 infl</span>}
-                  </div>
-                  {controller && (
-                    <div className="text-[10px] text-sand-100/40">
-                      controlled by {view.players[controller].name}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ))}
+    <div
+      className="rounded-2xl p-2.5 sm:p-3"
+      style={{
+        background: 'radial-gradient(120% 80% at 50% -10%, #2a2016, #17110b 75%)',
+        border: '1px solid #7b422277',
+        boxShadow: 'inset 0 0 60px -20px #000',
+      }}
+    >
+      {/* Faction regions across the top */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+        {IMP_FACTIONS.map((f) => (
+          <FactionRegion key={f} faction={f} {...common} />
+        ))}
+      </div>
+
+      {/* Landsraad · Conflict · CHOAM */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr_0.85fr] gap-2 mt-2 items-stretch">
+        <SpaceCluster group="landsraad" cols={1} {...common} />
+        <ConflictMedallion view={view} />
+        <SpaceCluster group="choam" cols={1} {...common} />
+      </div>
+
+      {/* Cities */}
+      <div className="mt-2">
+        <SpaceCluster group="city" cols={2} {...common} />
+      </div>
+
+      {/* Deep desert */}
+      <div className="mt-2">
+        <SpaceCluster group="desert" cols={3} {...common} />
+      </div>
     </div>
   );
 }
