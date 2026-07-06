@@ -70,6 +70,14 @@
   .anim-pulse {
     animation: imp-pulse 2.4s ease-in-out infinite;
   }
+  /* A brief highlight when a tracked value changes (VP, committed troops). */
+  .anim-flash {
+    animation: imp-flash 0.7s ease-out both;
+  }
+  /* A gentle ring pulse marking "it's your turn to act on the board". */
+  .anim-turn {
+    animation: imp-turn 2.6s ease-in-out infinite;
+  }
 }
 
 @keyframes imp-drop {
@@ -81,7 +89,16 @@
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
 }
+@keyframes imp-flash {
+  0% { transform: scale(1); text-shadow: 0 0 0 transparent; filter: brightness(1); }
+  35% { transform: scale(1.28); filter: brightness(1.9); text-shadow: 0 0 10px currentColor; }
+  100% { transform: scale(1); text-shadow: 0 0 0 transparent; filter: brightness(1); }
+}
+@keyframes imp-turn {
+  0%, 100% { box-shadow: inset 0 0 0 1px #e3bd7822, 0 0 0 0 #e3bd7800; }
+  50% { box-shadow: inset 0 0 0 1px #e3bd7855, 0 0 14px -2px #e3bd7855; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-drop, .anim-pulse { animation: none !important; }
+  .anim-drop, .anim-pulse, .anim-flash, .anim-turn { animation: none !important; }
 }

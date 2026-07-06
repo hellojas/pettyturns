@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import ImpBoard from '../components/ImpBoard';
-import ImpConflict from '../components/ImpConflict';
 import ImpDecision from '../components/ImpDecision';
 import ImpGameOver from '../components/ImpGameOver';
 import ImpHand from '../components/ImpHand';
@@ -115,7 +114,7 @@ export default function AsyncGame() {
 
   return (
     <main className="min-h-screen bg-dusk-900 text-sand-100 p-4">
-      <div className="max-w-[1500px] mx-auto">
+      <div className="max-w-[1760px] mx-auto">
         <header className="flex items-baseline gap-4 mb-3 flex-wrap">
           <Link to="/async" className="text-sand-300 font-semibold hover:underline">
             Async · Imperium
@@ -148,7 +147,7 @@ export default function AsyncGame() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_300px] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_320px] gap-4">
           <div className="space-y-4">
             {finished && (
               <section className="panel border-amber-600">
@@ -159,10 +158,6 @@ export default function AsyncGame() {
             <section className="panel">
               <h2 className="panel-title">Players</h2>
               <ImpPlayerMat view={view} viewingAs={viewingAs} onViewAs={setViewingAs} />
-            </section>
-            <section className="panel">
-              <h2 className="panel-title">Conflict</h2>
-              <ImpConflict view={view} viewingAs={viewingAs} />
             </section>
           </div>
 

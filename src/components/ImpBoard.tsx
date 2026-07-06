@@ -13,10 +13,14 @@ import { IMP_FACTIONS } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 import { Icon, type IconName } from './imp/icons';
 import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
-import { Meeple, TroopCount } from './imp/tokens';
+import { Meeple, TroopCube } from './imp/tokens';
 import { RegionBackdrop, type BackdropScene } from './imp/art';
 import { SpaceArt } from './imp/cardArt';
 import VpTrack from './imp/VpTrack';
+import LeaderPortrait from './imp/LeaderPortrait';
+import { FlashValue } from './imp/motion';
+import { combatStrength } from '../imperium/engine/engine';
+import type { ImpGameState } from '../imperium/types';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
 const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
@@ -126,19 +130,42 @@ function SpaceTile({
             : ''
       }`}
       style={{
-        borderColor: legal || selected ? '#e3bd78' : `${accent}55`,
+        borderColor: occupant && !legal && !selected
+          ? `${PLAYER_COLORS[occupantIdx % 4]}88`
+          : legal || selected
+            ? '#e3bd78'
+            : `${accent}55`,
         background: legal
           ? `linear-gradient(150deg, #2c2114, #1c150f), radial-gradient(120% 120% at 50% 0%, ${accent}33, transparent 55%)`
           : `linear-gradient(150deg, #221a12, #1a130d)`,
-        boxShadow: legal && !selected ? '0 0 0 1px #e3bd7855, 0 0 10px -2px #e3bd7877' : undefined,
-        opacity: occupant && !legal && !selected ? 0.72 : 1,
+        boxShadow: legal && !selected
+          ? '0 0 0 1px #e3bd7855, 0 0 10px -2px #e3bd7877'
+          : occupant && !selected
+            ? `inset 0 0 0 1px ${PLAYER_COLORS[occupantIdx % 4]}55`
+            : undefined,
+        opacity: occupant && !legal && !selected ? 0.82 : 1,
       }}
     >
       <span className="absolute inset-y-0 left-0 w-1 z-10" style={{ background: accent }} />
       <div className="relative flex gap-1.5 pl-1">
-        {/* Space illustration */}
-        <div className="shrink-0 self-start mt-0.5 rounded-md overflow-hidden ring-1 ring-black/40">
-          <SpaceArt space={space} accent={accent} size={38} />
+        {/* Space illustration + the agent standee sitting on it */}
+        <div className="relative shrink-0 self-start mt-0.5">
+          <div className="rounded-md overflow-hidden ring-1 ring-black/40">
+            <SpaceArt space={space} accent={accent} size={38} />
+          </div>
+          {occupant && (
+            <span
+              className="absolute -bottom-1.5 -right-1.5 anim-drop rounded-full"
+              title={`agent placed: ${view.players[occupant].name} (${view.players[occupant].leaderId})`}
+            >
+              <LeaderPortrait
+                leaderId={view.players[occupant].leaderId}
+                size={22}
+                ring={PLAYER_COLORS[occupantIdx % 4]}
+                className="!rounded-full"
+              />
+            </span>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1">
@@ -158,8 +185,12 @@ function SpaceTile({
               />
             )}
             {occupant && (
-              <span className="ml-auto anim-drop">
-                <Meeple color={PLAYER_COLORS[occupantIdx % 4]} size={15} title={`agent: ${view.players[occupant].name}`} />
+              <span
+                className="ml-auto text-[8px] uppercase tracking-wider font-bold rounded px-1 py-[1px]"
+                style={{ background: `${PLAYER_COLORS[occupantIdx % 4]}22`, color: PLAYER_COLORS[occupantIdx % 4] }}
+                title={`occupied by ${view.players[occupant].name}`}
+              >
+                taken
               </span>
             )}
           </div>
@@ -191,49 +222,69 @@ function SpaceTile({
   );
 }
 
-/** Horizontal influence track (0…max) with each player's marker at their level. */
+/** Horizontal influence track (0…max): seat pips sit on each level, VP and
+ *  alliance milestones are marked with real icons, and the highest level any
+ *  player has reached is lit so the standings read at a glance. */
 function InfluenceTrack({ faction, view }: { faction: ImpFactionId; view: ImpVisibleState }) {
   const allianceHolder = view.alliances[faction];
   const cells = Array.from({ length: influenceMax + 1 }, (_, level) => level);
+  const topReached = Math.max(0, ...view.playerOrder.map((pid) => view.players[pid].influence[faction] ?? 0));
   return (
     <div className="flex items-stretch gap-[2px]">
       {cells.map((level) => {
         const here = view.playerOrder.filter((pid) => (view.players[pid].influence[faction] ?? 0) === level);
         const isVp = VP_LEVELS.includes(level);
         const isAlliance = level === allianceLevel;
+        const reached = level > 0 && level <= topReached;
         return (
           <div
             key={level}
-            title={`influence ${level}${isVp ? ' · +1 VP' : ''}${isAlliance ? ' · alliance' : ''}`}
-            className="flex-1 min-w-0 rounded-sm flex flex-col items-center justify-end gap-[1px] py-[2px] relative"
+            title={`influence ${level}${isVp ? ' · +1 VP' : ''}${isAlliance ? ' · alliance' : ''}${here.length ? ` · ${here.map((p) => view.players[p].name).join(', ')}` : ''}`}
+            className="flex-1 min-w-0 rounded-sm flex flex-col items-center justify-between gap-[1px] pt-[2px] pb-[1px] relative"
             style={{
-              background: level === 0 ? '#00000030' : '#ffffff0d',
-              border: isAlliance ? '1px solid #e3bd7866' : '1px solid transparent',
+              background: level === 0 ? '#00000033' : reached ? '#e3bd7818' : '#ffffff0b',
+              border: isAlliance ? '1px solid #e3bd7866' : reached ? '1px solid #e3bd7822' : '1px solid transparent',
             }}
           >
-            <div className="flex flex-wrap justify-center gap-[1px] min-h-[8px] px-[1px]">
+            {/* seat pips currently standing on this level */}
+            <div className="flex flex-wrap justify-center gap-[1.5px] min-h-[9px] px-[1px]">
               {here.map((pid) => (
                 <span
                   key={pid}
-                  className="w-2 h-2 rounded-full ring-1 ring-black/40"
-                  style={{ background: PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4] }}
+                  className="w-[9px] h-[9px] rounded-full"
+                  style={{
+                    background: PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4],
+                    boxShadow: `0 0 0 1px #00000066, 0 0 4px -1px ${PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]}`,
+                  }}
                   title={`${view.players[pid].name}: ${level}`}
                 />
               ))}
             </div>
-            <span
-              className="text-[7px] leading-none font-bold"
-              style={{ color: isAlliance ? '#f2c94c' : isVp ? '#e3bd78' : '#f7ecd766' }}
-              title={isAlliance ? 'alliance level' : isVp ? 'victory-point level' : undefined}
-            >
-              {isAlliance ? '★' : isVp ? '✦' : level}
-            </span>
+            {/* milestone marker: VP orb, alliance star, else the level number */}
+            {isAlliance ? (
+              <Icon name="vp" size={9} color="#f2c94c" title="alliance level" />
+            ) : isVp ? (
+              <Icon name="vp" size={8} color="#e3bd78" title="+1 VP at this level" />
+            ) : (
+              <span className="text-[7px] leading-none font-bold" style={{ color: '#f7ecd755' }}>
+                {level}
+              </span>
+            )}
           </div>
         );
       })}
       {allianceHolder && (
-        <span className="self-center pl-1 text-[9px] text-amber-300" title={`${view.players[allianceHolder].name} holds the alliance`}>
-          ★
+        <span
+          className="self-center pl-1 inline-flex items-center"
+          title={`${view.players[allianceHolder].name} holds the alliance`}
+        >
+          <span
+            className="w-[9px] h-[9px] rounded-full"
+            style={{
+              background: PLAYER_COLORS[view.playerOrder.indexOf(allianceHolder) % 4],
+              boxShadow: '0 0 0 1.5px #f2c94c',
+            }}
+          />
         </span>
       )}
     </div>
@@ -338,11 +389,83 @@ function SpaceCluster({
   );
 }
 
-/** The board's beating heart: the current conflict and its reward ladder. */
-function ConflictMedallion({ view }: { view: ImpVisibleState }) {
+/** One combatant's line in the conflict: seat disc, troops, and a strength bar. */
+function CombatantRow({
+  pid,
+  view,
+  strength,
+  maxStrength,
+  leading,
+}: {
+  pid: PlayerId;
+  view: ImpVisibleState;
+  strength: number;
+  maxStrength: number;
+  leading: boolean;
+}) {
+  const seat = PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4];
+  const p = view.players[pid];
+  const pct = maxStrength > 0 ? Math.max(6, Math.round((strength / maxStrength) * 100)) : 6;
+  return (
+    <div className="flex items-center gap-1.5">
+      <LeaderPortrait leaderId={p.leaderId} size={18} ring={seat} className="!rounded-full shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-semibold text-sand-100/90 truncate">{p.name}</span>
+          {leading && (
+            <Icon name="vp" size={9} color="#f2c94c" title="currently leading the conflict" />
+          )}
+          <span className="ml-auto inline-flex items-center gap-0.5 shrink-0" title={`${p.inConflict} troop(s) committed`}>
+            <TroopCube color={seat} size={11} />
+            <span className="text-[9px] font-bold tabular-nums text-sand-100/70">{p.inConflict}</span>
+          </span>
+        </div>
+        {/* strength bar */}
+        <div className="mt-[1px] h-[6px] rounded-full overflow-hidden" style={{ background: '#00000055' }}>
+          <FlashValue value={strength} className="block h-full">
+            <span
+              className="block h-full rounded-full transition-all"
+              style={{
+                width: `${pct}%`,
+                background: leading ? seat : `${seat}aa`,
+                boxShadow: leading ? `0 0 8px -1px ${seat}` : undefined,
+              }}
+            />
+          </FlashValue>
+        </div>
+      </div>
+      <span
+        className="text-[11px] font-bold tabular-nums shrink-0 w-5 text-right"
+        style={{ color: leading ? '#f2c94c' : '#cdbfa8' }}
+        title="combat strength"
+      >
+        {strength}
+      </span>
+    </div>
+  );
+}
+
+/** The board's beating heart: the current conflict, live strengths, and combat. */
+function ConflictMedallion({
+  view,
+  viewingAs,
+  full,
+  onPass,
+}: {
+  view: ImpVisibleState;
+  viewingAs: PlayerId | 'SPECTATOR';
+  full: ImpGameState | null;
+  onPass: () => void;
+}) {
   const conflict = view.currentConflict ? IMP_CONFLICT_DEFS[view.currentConflict] : null;
   const tierColor = conflict ? ['#8a8f98', '#c98a2b', '#d24b3e'][conflict.tier - 1] : '#8a8f98';
   const combatants = view.playerOrder.filter((pid) => view.players[pid].inConflict > 0);
+  const strengthOf = (pid: PlayerId) =>
+    full ? combatStrength(full, pid) : view.players[pid].inConflict * IMP_CONSTANTS.strengthPerTroop;
+  const strengths = Object.fromEntries(combatants.map((pid) => [pid, strengthOf(pid)]));
+  const maxStrength = Math.max(0, ...combatants.map((pid) => strengths[pid]));
+  const inCombat = view.phase === 'combat';
+  const myWindow = inCombat && view.turn === viewingAs;
   return (
     <div
       className="rounded-xl p-3 flex flex-col gap-2 relative overflow-hidden h-full"
@@ -384,6 +507,7 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
               {['I', 'II', 'III'][conflict.tier - 1]}
             </span>
           </div>
+          {/* Reward ladder */}
           <div className="relative flex flex-col gap-1 mt-0.5">
             {conflict.rewards.map((r) => (
               <div key={r.place} className="flex items-center gap-2">
@@ -400,22 +524,45 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
               </div>
             ))}
           </div>
-          <div className="relative mt-auto pt-1 border-t border-black/30 flex items-center gap-1.5 min-h-[20px]">
+
+          {/* Committed forces: seat, troops, and a live strength bar per combatant */}
+          <div className="relative mt-auto pt-1.5 border-t border-black/30 flex flex-col gap-1.5">
             {combatants.length > 0 ? (
-              <>
-                <span className="text-[9px] uppercase tracking-wider text-red-300/70">committed</span>
-                {combatants.map((pid) => (
-                  <TroopCount
+              combatants
+                .slice()
+                .sort((a, b) => strengths[b] - strengths[a])
+                .map((pid) => (
+                  <CombatantRow
                     key={pid}
-                    color={PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]}
-                    count={view.players[pid].inConflict}
+                    pid={pid}
+                    view={view}
+                    strength={strengths[pid]}
+                    maxStrength={maxStrength}
+                    leading={maxStrength > 0 && strengths[pid] === maxStrength}
                   />
-                ))}
-              </>
+                ))
             ) : (
-              <span className="text-[9px] text-sand-100/35 italic">no troops committed yet</span>
+              <span className="text-[9px] text-sand-100/35 italic py-1">no troops committed yet</span>
             )}
           </div>
+
+          {/* Combat window controls (merged in from the old sidebar panel) */}
+          {inCombat && (
+            <div className="relative rounded-md border border-red-900/60 bg-red-950/25 p-1.5 flex items-center gap-2">
+              <span className="anim-pulse text-[11px] font-bold text-red-300 inline-flex items-center gap-1">
+                <Icon name="sword" size={13} /> Combat!
+              </span>
+              {myWindow ? (
+                <button className="btn !py-0.5 !px-2 !text-[11px] ml-auto" onClick={onPass}>
+                  Pass
+                </button>
+              ) : (
+                <span className="ml-auto text-[10px] text-sand-100/60">
+                  {view.turn ? `waiting for ${view.players[view.turn].name}` : 'resolving…'}
+                </span>
+              )}
+            </div>
+          )}
         </>
       ) : (
         <div className="text-sand-100/40 text-sm italic">No active conflict.</div>
@@ -476,6 +623,44 @@ function BoardHeader({ view }: { view: ImpVisibleState }) {
   );
 }
 
+/** A collapsible key for the custom glyphs, so a first-time viewer can decode them. */
+const LEGEND: Array<{ icon: IconName; label: string }> = [
+  { icon: 'persuasion', label: 'Persuasion (buy cards)' },
+  { icon: 'sword', label: 'Swords (combat strength)' },
+  { icon: 'spice', label: 'Spice (melange)' },
+  { icon: 'solari', label: 'Solari (money)' },
+  { icon: 'water', label: 'Water' },
+  { icon: 'troops', label: 'Troops' },
+  { icon: 'draw', label: 'Draw cards' },
+  { icon: 'intrigue', label: 'Intrigue card' },
+  { icon: 'vp', label: 'Victory point' },
+  { icon: 'influence', label: 'Influence (any track)' },
+  { icon: 'spiceTrade', label: 'Maker — harvest spice' },
+  { icon: 'city', label: 'Control space' },
+];
+
+function BoardLegend() {
+  return (
+    <details className="relative z-20 shrink-0 group">
+      <summary className="cursor-pointer list-none select-none rounded-md border border-[#7b422255] bg-black/30 px-2 py-1 text-[10px] uppercase tracking-wider text-sand-100/60 hover:text-sand-200 hover:border-[#7b4222aa]">
+        ? Legend
+      </summary>
+      <div className="absolute right-0 mt-1 w-56 rounded-lg border border-[#7b4222aa] bg-[#1a130d] p-2 shadow-xl grid grid-cols-1 gap-1">
+        {LEGEND.map((e) => (
+          <div key={e.icon} className="flex items-center gap-2 text-[11px] text-sand-100/75">
+            <Icon name={e.icon} size={14} />
+            <span>{e.label}</span>
+          </div>
+        ))}
+        <div className="mt-1 pt-1 border-t border-black/40 text-[10px] text-sand-100/45 leading-snug">
+          Colored discs are each player's seat color — agents on spaces, troops in
+          the conflict, and markers on the influence tracks.
+        </div>
+      </div>
+    </details>
+  );
+}
+
 /**
  * The agent board, laid out like the physical Dune: Imperium board — four
  * faction regions with influence tracks along the top, the Landsraad and CHOAM
@@ -486,6 +671,7 @@ function BoardHeader({ view }: { view: ImpVisibleState }) {
 export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; viewingAs: PlayerId | 'SPECTATOR' }) {
   const pending = useImpStore((s) => s.pending);
   const setPending = useImpStore((s) => s.setPending);
+  const dispatch = useImpStore((s) => s.dispatch);
   const full = useImpStore((s) => s.state);
 
   const legalTargets = new Set<string>();
@@ -505,9 +691,14 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
   const onSelect = (id: string) => pending && setPending({ ...pending, spaceId: id });
   const common = { view, legalTargets, selectedSpace: pending?.spaceId, onSelect };
 
+  // Turn affordance: pulse the board while it's this seat's placement turn.
+  const me = viewingAs !== 'SPECTATOR' ? view.players[viewingAs] : null;
+  const yourPlacementTurn =
+    !!me && view.phase === 'playerTurns' && view.turn === viewingAs && !me.revealed && me.agentsLeft > 0;
+
   return (
     <div
-      className="relative rounded-2xl p-2.5 sm:p-3 overflow-hidden"
+      className={`relative rounded-2xl p-2.5 sm:p-3 overflow-hidden ${yourPlacementTurn ? 'anim-turn' : ''}`}
       style={{
         background: 'radial-gradient(120% 80% at 50% -10%, #2a2016, #17110b 75%)',
         border: '1px solid #7b422277',
@@ -515,10 +706,19 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
       }}
     >
       <div className="tex-spice absolute inset-0 pointer-events-none opacity-70" aria-hidden />
-      {/* Arrakis panorama header */}
-      <div className="relative">
-        <BoardHeader view={view} />
+      {/* Arrakis panorama header + icon legend */}
+      <div className="relative flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <BoardHeader view={view} />
+        </div>
+        <BoardLegend />
       </div>
+      {yourPlacementTurn && (
+        <div className="relative -mt-1 mb-1.5 text-[11px] text-amber-200/80 flex items-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-300 anim-pulse" />
+          Your turn — pick a card, then a highlighted space.
+        </div>
+      )}
       {/* Victory track across the top edge */}
       <div className="relative mb-2">
         <VpTrack view={view} />
@@ -533,7 +733,12 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
       {/* Landsraad · Conflict · CHOAM */}
       <div className="relative grid grid-cols-1 lg:grid-cols-[1.15fr_1fr_0.85fr] gap-2 mt-2 items-stretch">
         <SpaceCluster group="landsraad" cols={1} scene="columns" {...common} />
-        <ConflictMedallion view={view} />
+        <ConflictMedallion
+          view={view}
+          viewingAs={viewingAs}
+          full={full}
+          onPass={() => viewingAs !== 'SPECTATOR' && dispatch({ type: 'imp/combatPass', playerId: viewingAs })}
+        />
         <SpaceCluster group="choam" cols={1} scene="exchange" {...common} />
       </div>
 

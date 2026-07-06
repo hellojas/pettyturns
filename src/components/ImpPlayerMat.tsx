@@ -2,9 +2,10 @@ import { IMP_LEADERS } from '../imperium/data/leaders';
 import { IMP_FACTION_INFLUENCE_REWARDS } from '../imperium/data/factions';
 import { IMP_CONSTANTS } from '../imperium/data/constants';
 import { IMP_FACTIONS, type Gains, type ImpFactionId, type ImpVisibleState, type PlayerId } from '../imperium/types';
-import { Icon, type IconName } from './imp/icons';
+import { Icon, ICON_COLORS, type IconName } from './imp/icons';
 import { PLAYER_COLORS } from './imp/visuals';
 import LeaderPortrait from './imp/LeaderPortrait';
+import { FlashValue } from './imp/motion';
 
 /** Short original-wording summary of a step reward's Gains. */
 function describeGains(g: Gains): string {
@@ -63,14 +64,20 @@ function leaderTooltip(leaderId: string): string {
   return `${leader.name}\n${lines.join('\n')}`;
 }
 
-/** A resource read-out: icon + tabular value. */
+/** A resource read-out: icon + tabular value. Zero values dim so non-zero pops. */
 function Stat({ icon, value, title, color }: { icon: IconName; value: string; title: string; color?: string }) {
+  const zero = value === '0' || value === '0/0';
   return (
-    <span className="inline-flex items-center gap-0.5" title={title}>
+    <span className={`inline-flex items-center gap-0.5 ${zero ? 'opacity-40' : ''}`} title={title}>
       <Icon name={icon} size={13} color={color} />
       <span className="text-[11px] font-semibold tabular-nums text-sand-100/85">{value}</span>
     </span>
   );
+}
+
+/** A thin vertical divider between resource groups. */
+function Sep() {
+  return <span className="w-px self-stretch bg-sand-100/10 mx-0.5" aria-hidden />;
 }
 
 /** All player boards: portrait, leader, resources, influence, garrison, seat switcher. */
@@ -135,17 +142,24 @@ export default function ImpPlayerMat({
                 <div className="text-[11px] text-sand-100/55 truncate" title={leaderTooltip(p.leaderId)}>
                   {leader?.name ?? p.leaderId}
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
-                  <span
-                    className="inline-flex items-center gap-0.5 rounded px-1 font-bold text-[11px]"
-                    style={{ background: '#f2c94c22', color: '#f2c94c' }}
-                    title="victory points"
+                <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <FlashValue
+                    value={p.vp}
+                    className="items-center gap-0.5 rounded px-1 font-bold text-[11px] bg-[#f2c94c22]"
                   >
-                    <Icon name="vp" size={13} /> {p.vp}
-                  </span>
+                    <span
+                      className="inline-flex items-center gap-0.5"
+                      style={{ color: '#f2c94c' }}
+                      title="victory points"
+                    >
+                      <Icon name="vp" size={13} /> {p.vp}
+                    </span>
+                  </FlashValue>
+                  <Sep />
                   <Stat icon="spice" value={`${p.spice}`} title="spice" />
                   <Stat icon="solari" value={`${p.solari}`} title="solari" />
                   <Stat icon="water" value={`${p.water}`} title="water" />
+                  <Sep />
                   <Stat
                     icon="troops"
                     value={`${p.garrison}${p.inConflict > 0 ? `(+${p.inConflict})` : ''}`}
@@ -155,26 +169,31 @@ export default function ImpPlayerMat({
               </div>
             </div>
 
-            {/* Influence + tokens strip */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 pb-1.5 pt-0.5 border-t border-black/30">
+            {/* Influence mini-row (faction-colored) + token counts */}
+            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 pb-1.5 pt-0.5 border-t border-black/30">
               {IMP_FACTIONS.map((f) => {
                 const holdsAlliance = view.alliances[f] === pid;
+                const val = p.influence[f];
+                const accent = ICON_COLORS[f as IconName];
                 return (
                   <span
                     key={f}
-                    className="inline-flex items-center gap-0.5"
-                    title={factionTrackTooltip(f, p.influence[f], holdsAlliance)}
+                    className={`inline-flex items-center gap-0.5 rounded px-1 py-[1px] ${val === 0 && !holdsAlliance ? 'opacity-45' : ''}`}
+                    style={{ background: holdsAlliance ? '#f2c94c1f' : val > 0 ? `${accent}1c` : 'transparent' }}
+                    title={factionTrackTooltip(f, val, holdsAlliance)}
                   >
                     <Icon name={f as IconName} size={12} />
                     <span
-                      className={`text-[10px] font-semibold tabular-nums ${holdsAlliance ? 'text-amber-300' : 'text-sand-100/70'}`}
+                      className="text-[10px] font-semibold tabular-nums"
+                      style={{ color: holdsAlliance ? '#f2c94c' : val > 0 ? accent : '#f7ecd7b0' }}
                     >
-                      {p.influence[f]}
+                      {val}
                       {holdsAlliance && '★'}
                     </span>
                   </span>
                 );
               })}
+              <Sep />
               <span className="ml-auto inline-flex items-center gap-2">
                 <Stat icon="troops" value={`${p.agentsLeft}/${totalAgents}`} title="agents left / total" color="#cdbfa8" />
                 <Stat icon="draw" value={`${handCount}`} title="cards in hand" />
