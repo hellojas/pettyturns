@@ -158,7 +158,10 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
                 (def.kind === 'plot' && myTurn) ||
                 (def.kind === 'combat' && view.phase === 'combat' && view.turn === viewingAs);
               const needsTarget = (def.gains?.destroyTroops ?? 0) > 0;
-              const target = combatTargets[intrigueId] ?? oppInConflict[0];
+              // A stored pick can go stale (held across rounds); only honor it
+              // while that opponent is still committed, else fall back to a valid one.
+              const stored = combatTargets[intrigueId];
+              const target = stored && oppInConflict.includes(stored) ? stored : oppInConflict[0];
               const canPlay = playable && (!needsTarget || !!target);
               return (
                 <ImpIntrigueCard

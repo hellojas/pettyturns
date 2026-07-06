@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { impApply, impValidate } from '../../imperium/engine/engine';
+import { impAllowedActions, impApply, impValidate } from '../../imperium/engine/engine';
 import { applyGains, trashOneCard } from '../../imperium/engine/effects';
 import { getVisibleImperiumState } from '../../imperium/engine/visibility';
 import { RESERVE_SUPPLY } from '../../imperium/data/cards';
@@ -96,6 +96,22 @@ describe('reserve supply', () => {
     s = trashOneCard(s, 'p1', cardId);
     expect(s.hidden.p1.trashed).toContain(cardId);
     expect(s.reserveSupply.arrakisLiaison).toBe(before);
+  });
+
+  it('does not advertise a sold-out reserve in the allowed buy actions', () => {
+    let s = makeImp();
+    s = apply(s, { type: 'imp/reveal', playerId: 'p1' });
+    s = patch(s, 'p1', { persuasion: 50 });
+    s = { ...s, reserveSupply: { ...s.reserveSupply, theSpiceMustFlow: 0 } };
+
+    const buy = impAllowedActions(s, 'p1').find((a) => a.type === 'imp/buyCard');
+    const affordable = (buy?.params?.affordable ?? []) as string[];
+    expect(affordable).not.toContain('theSpiceMustFlow'); // sold out
+    expect(affordable).toContain('arrakisLiaison'); // still in stock
+    // allowed-actions and the validator now agree.
+    expect(
+      impValidate(s, { type: 'imp/buyCard', playerId: 'p1', cardId: 'theSpiceMustFlow' }),
+    ).toMatchObject({ ok: false, code: 'sold-out' });
   });
 
   it('exposes the reserve stacks to every viewer (they sit face up)', () => {

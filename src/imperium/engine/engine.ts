@@ -325,7 +325,13 @@ export function impAllowedActions(state: ImpGameState, pid: PlayerId): ImpAllowe
     } else if (!p.turnDone) {
       const affordable = [
         ...state.imperiumRow.filter((c) => cardDef(state, c).cost <= p.persuasion),
-        ...RESERVE_DEF_IDS.filter((d) => IMP_CARD_DEFS[d].cost > 0 && IMP_CARD_DEFS[d].cost <= p.persuasion),
+        // Mirror the buyCard validator: a depleted reserve stack is not for sale.
+        ...RESERVE_DEF_IDS.filter(
+          (d) =>
+            IMP_CARD_DEFS[d].cost > 0 &&
+            IMP_CARD_DEFS[d].cost <= p.persuasion &&
+            (state.reserveSupply[d] ?? 0) > 0,
+        ),
       ];
       if (affordable.length > 0)
         actions.push({ type: 'imp/buyCard', label: 'Acquire a card', params: { affordable } });

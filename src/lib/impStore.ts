@@ -6,7 +6,7 @@ import { stateAfter } from '../imperium/engine/replay';
 import { getVisibleImperiumState } from '../imperium/engine/visibility';
 import { LocalMockTransport, LocalStorageJournalStore } from '../imperium/net';
 import type { ImpGameSummary, ImpGameTransport } from '../imperium/net';
-import { RESERVE_SUPPLY } from '../imperium/data/cards';
+import { RESERVE_DEF_IDS } from '../imperium/data/cards';
 import type {
   CardId,
   ImpAction,
@@ -124,6 +124,19 @@ function persist(
  * Normalizing `initial` is sufficient: the journal is replayed from it via the
  * pure reducer, whose output always carries these fields.
  */
+/**
+ * A save written before finite Reserve stacks existed was played under the old
+ * "unlimited reserves" rule, so its journal may acquire a Reserve card more
+ * times than the current stack holds. Replaying it against the real counts would
+ * make a once-legal buy fail validation and throw on load. Backfilling a legacy
+ * save with effectively-unlimited stacks preserves that game's original rules and
+ * keeps replay faithful; new games always carry real counts from setup, so this
+ * only ever applies to genuinely old saves.
+ */
+const LEGACY_UNLIMITED_RESERVE = 999;
+const legacyReserveSupply = (): Record<string, number> =>
+  Object.fromEntries(RESERVE_DEF_IDS.map((d) => [d, LEGACY_UNLIMITED_RESERVE]));
+
 export function normalizeImpState(state: ImpGameState): ImpGameState {
   const players = Object.fromEntries(
     Object.entries(state.players).map(([pid, p]) => [
@@ -151,7 +164,7 @@ export function normalizeImpState(state: ImpGameState): ImpGameState {
     players,
     hidden,
     imperiumRow: state.imperiumRow ?? [],
-    reserveSupply: state.reserveSupply ?? { ...RESERVE_SUPPLY },
+    reserveSupply: state.reserveSupply ?? legacyReserveSupply(),
     intrigueDiscard: state.intrigueDiscard ?? [],
     combatPassed: state.combatPassed ?? [],
     occupied: state.occupied ?? {},

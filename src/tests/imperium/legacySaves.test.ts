@@ -23,6 +23,7 @@ function ageState(state: ImpGameState): ImpGameState {
     'makerBonus',
     'alliances',
     'controlledBy',
+    'reserveSupply',
     'finalStandings',
   ]) {
     delete s[key];
@@ -73,5 +74,27 @@ describe('legacy save normalization', () => {
   it('is a no-op on a complete, current save', () => {
     const fresh = makeImp();
     expect(normalizeImpState(fresh)).toEqual(fresh);
+  });
+
+  it('replays a legacy over-acquisition of a Reserve card without crashing', () => {
+    // An older build let you acquire a Reserve card any number of times (reserves
+    // were "unlimited"). Such a journal must still load — the finite-stack rule
+    // can't retroactively invalidate history.
+    let base = impApply(makeImp(), reveal);
+    base = { ...base, players: { ...base.players, p1: { ...base.players.p1, persuasion: 100 } } };
+    const initial = normalizeImpState(ageState(base));
+    // A legacy save is backfilled to effectively-unlimited stacks, not the finite counts.
+    expect(initial.reserveSupply.arrakisLiaison).toBeGreaterThan(8);
+
+    const buys: ImpAction[] = Array.from({ length: 9 }, () => ({
+      type: 'imp/buyCard',
+      playerId: 'p1',
+      cardId: 'arrakisLiaison',
+      at: '2026-01-01T00:00:00.000Z',
+    }));
+    expect(() => stateAfter(initial, buys, buys.length)).not.toThrow();
+    const live = stateAfter(initial, buys, buys.length);
+    const acquired = Object.values(live.cardsById).filter((c) => c.defId === 'arrakisLiaison').length;
+    expect(acquired).toBe(9); // all nine buys landed
   });
 });
