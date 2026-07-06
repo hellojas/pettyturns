@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ImpCardDef } from '../imperium/types';
+import type { Costs, Gains, ImpCardDef } from '../imperium/types';
 import { Icon } from './imp/icons';
 import { cardAccent, costChips, gainsChips, type Chip } from './imp/visuals';
 
@@ -35,6 +35,9 @@ export default function ImpCard({
   disabled = false,
   dimmed = false,
   showCost = false,
+  signetLeaderName,
+  signetGains,
+  signetCost,
   onClick,
   footer,
   className = '',
@@ -45,6 +48,12 @@ export default function ImpCard({
   dimmed?: boolean;
   /** Show the persuasion price badge (market / reserve). */
   showCost?: boolean;
+  /** For a signet card: the leader whose signet ability it fires. */
+  signetLeaderName?: string;
+  /** For a signet card: the leader's signet gains, rendered as chips. */
+  signetGains?: Gains;
+  /** For a signet card: the leader's signet cost, if any. */
+  signetCost?: Costs;
   onClick?: () => void;
   footer?: ReactNode;
   className?: string;
@@ -54,6 +63,8 @@ export default function ImpCard({
   const agentCost = costChips(def.agentCost);
   const reveal = gainsChips(def.revealGains);
   const acquire = gainsChips(def.acquireGains);
+  const signet = def.signet ? gainsChips(signetGains) : [];
+  const signetPay = def.signet ? costChips(signetCost) : [];
   const hasAgent = agent.length > 0 || agentCost.length > 0 || def.signet || def.trashAfterAgent;
 
   const clickable = !!onClick && !disabled;
@@ -123,7 +134,26 @@ export default function ImpCard({
                   <ChipRow chips={agentCost} muted />
                 </div>
               )}
-              {def.signet && <span className="text-[10px] text-sand-300">◈ leader signet</span>}
+              {def.signet && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] text-sand-300">
+                    ◈ {signetLeaderName ? `${signetLeaderName}'s signet` : 'leader signet'}
+                  </span>
+                  {signet.length > 0 ? (
+                    <ChipRow chips={signet} />
+                  ) : (
+                    def.signet && !signetGains && (
+                      <span className="text-[9px] text-sand-100/40 italic">fires your leader's signet power</span>
+                    )
+                  )}
+                  {signetPay.length > 0 && (
+                    <div className="flex items-center gap-1 text-red-300/80">
+                      <span className="text-[9px] uppercase">pay</span>
+                      <ChipRow chips={signetPay} muted />
+                    </div>
+                  )}
+                </div>
+              )}
               {def.trashAfterAgent && <span className="text-[10px] text-sand-100/45">trashes after use</span>}
             </div>
           </div>
