@@ -30,12 +30,25 @@ export default function Game() {
 
   if (!view || !full) {
     return (
-      <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div>Game not found on this device.</div>
-          <Link to="/" className="text-sand-300 underline">
-            Back to home
-          </Link>
+      <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-center justify-center p-6">
+        <div
+          className="relative overflow-hidden rounded-2xl px-8 py-10 max-w-sm text-center"
+          style={{
+            background: 'radial-gradient(120% 90% at 50% -20%, #3a2a1a, #17110b 72%)',
+            border: '1px solid #7b422277',
+            boxShadow: 'inset 0 0 60px -18px #000',
+          }}
+        >
+          <div className="tex-spice absolute inset-0 pointer-events-none opacity-60" aria-hidden />
+          <div className="relative space-y-3">
+            <div className="font-display text-2xl font-bold text-sand-300 tracking-wide">Lost to the sands</div>
+            <p className="text-sm text-sand-100/60">
+              No game with this id lives on this device. Saved games are stored locally in this browser.
+            </p>
+            <Link to="/" className="btn inline-block mt-1">
+              Back to home
+            </Link>
+          </div>
         </div>
       </main>
     );

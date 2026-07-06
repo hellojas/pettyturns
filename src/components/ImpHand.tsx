@@ -4,42 +4,11 @@ import { IMP_SPACES } from '../imperium/data/spaces';
 import type { ImpVisibleState, PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 import ImpCard from './ImpCard';
+import ImpIntrigueCard from './ImpIntrigueCard';
 import { Icon } from './imp/icons';
 
 function defOf(view: ImpVisibleState, cardId: string) {
   return IMP_CARD_DEFS[view.cardsById[cardId].defId];
-}
-
-const FACTION_SHORT: Record<string, string> = {
-  emperor: 'Emperor',
-  spacingGuild: 'Spacing Guild',
-  beneGesserit: 'Bene Gesserit',
-  fremen: 'Fremen',
-};
-
-const METRIC_LABEL: Record<string, string> = {
-  influence: 'influence',
-  controlSpaces: 'control markers',
-  intrigueCards: 'intrigue cards',
-  alliances: 'alliance tokens',
-  spice: 'spice',
-  solari: 'solari',
-  water: 'water',
-  troops: 'troops',
-};
-
-/** Original-wording summary of how an endgame intrigue card scores. */
-function describeEndgame(def: (typeof IMP_INTRIGUE_DEFS)[string]): string {
-  const vp = def.gains?.vp ?? 0;
-  const cond = def.endgameCondition;
-  if (!cond) return `Scores ${vp} VP`;
-  const metric = cond.metric === 'influence' && cond.faction
-    ? `${FACTION_SHORT[cond.faction]} influence`
-    : METRIC_LABEL[cond.metric];
-  if (cond.mostAmong) return `${vp} VP if you hold the most ${metric}`;
-  if (cond.per) return `${vp} VP per ${cond.per} ${metric}`;
-  if (cond.atLeast !== undefined) return `${vp} VP with ${cond.atLeast}+ ${metric}`;
-  return `Scores ${vp} VP`;
 }
 
 /**
@@ -169,31 +138,30 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
       {self.intrigue.length > 0 && (
         <div>
           <div className="text-sand-100/50 uppercase tracking-wide mb-1">Intrigue ({self.intrigue.length})</div>
-          {self.intrigue.map((intrigueId) => {
-            const def = IMP_INTRIGUE_DEFS[view.intrigueById[intrigueId].defId];
-            const playable =
-              (def.kind === 'plot' && myTurn) ||
-              (def.kind === 'combat' && view.phase === 'combat' && view.turn === viewingAs);
-            return (
-              <div key={intrigueId} className="flex items-center gap-2 py-0.5">
-                <span className="inline-flex items-center gap-1 text-sand-200">
-                  <Icon name="intrigue" size={13} />
-                  {def.name}
-                </span>
-                <span className="text-sand-100/40">
-                  {def.kind === 'endgame' ? describeEndgame(def) : def.kind}
-                </span>
-                {playable && (
-                  <button
-                    className="btn-secondary ml-auto !py-0.5"
-                    onClick={() => dispatch({ type: 'imp/playIntrigue', playerId: viewingAs, intrigueId })}
-                  >
-                    Play
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          <div className="grid grid-cols-2 gap-2">
+            {self.intrigue.map((intrigueId) => {
+              const def = IMP_INTRIGUE_DEFS[view.intrigueById[intrigueId].defId];
+              const playable =
+                (def.kind === 'plot' && myTurn) ||
+                (def.kind === 'combat' && view.phase === 'combat' && view.turn === viewingAs);
+              return (
+                <ImpIntrigueCard
+                  key={intrigueId}
+                  def={def}
+                  footer={
+                    playable ? (
+                      <button
+                        className="btn w-full !py-0.5"
+                        onClick={() => dispatch({ type: 'imp/playIntrigue', playerId: viewingAs, intrigueId })}
+                      >
+                        Play
+                      </button>
+                    ) : undefined
+                  }
+                />
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
