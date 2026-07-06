@@ -14,6 +14,7 @@ import { useImpStore } from '../lib/impStore';
 import { Icon, type IconName } from './imp/icons';
 import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
 import { Meeple, TroopCount } from './imp/tokens';
+import { ArtEmblem, SPACE_ART } from './imp/art';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
 const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
@@ -97,7 +98,10 @@ function SpaceTile({
       }}
     >
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent }} />
-      <div className="flex items-center gap-1 pl-1">
+      <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden>
+        <ArtEmblem motif={SPACE_ART[space.id]} size={38} color={accent} opacity={legal || selected ? 0.28 : 0.16} />
+      </span>
+      <div className="relative flex items-center gap-1 pl-1">
         <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
         {space.combat && <Icon name="sword" size={12} title="opens the conflict" />}
         {space.maker && bonus > 0 && (
@@ -112,7 +116,7 @@ function SpaceTile({
           </span>
         )}
       </div>
-      <div className="pl-1 mt-0.5 flex items-center gap-2 flex-wrap">
+      <div className="relative pl-1 mt-0.5 flex items-center gap-2 flex-wrap">
         {costs.length > 0 && (
           <span className="inline-flex items-center gap-1">
             <ChipRow chips={costs} tone="cost" />
@@ -128,7 +132,7 @@ function SpaceTile({
         {special && <span className="text-[10px] text-sand-300/80">{special}</span>}
       </div>
       {controller && (
-        <div className="pl-1 mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
+        <div className="relative pl-1 mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
           <Meeple color={PLAYER_COLORS[controllerIdx % 4]} size={11} />
           controlled by {view.players[controller].name}
         </div>

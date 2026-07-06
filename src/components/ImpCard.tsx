@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { ImpCardDef } from '../imperium/types';
 import { Icon } from './imp/icons';
 import { cardAccent, costChips, gainsChips, type Chip } from './imp/visuals';
+import { ArtEmblem, cardMotif } from './imp/art';
 
 /** A row of effect chips (icon + amount). Empty renders nothing. */
 function ChipRow({ chips, muted }: { chips: Chip[]; muted?: boolean }) {
@@ -80,6 +81,14 @@ export default function ImpCard({
         <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent }} />
         {/* Paper grain */}
         <span className="tex-grain absolute inset-0 pointer-events-none opacity-70" aria-hidden />
+        {/* Scene art watermark */}
+        <ArtEmblem
+          motif={cardMotif(def)}
+          size={62}
+          color={accent}
+          opacity={0.14}
+          className="absolute -right-1 top-6 pointer-events-none"
+        />
 
         {/* Header: icons + name + cost */}
         <div className="relative pl-2.5 pr-1.5 pt-1.5 pb-1">
