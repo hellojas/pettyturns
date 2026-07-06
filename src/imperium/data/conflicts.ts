@@ -170,6 +170,112 @@ export const IMP_CONFLICT_DEFS: Record<ConflictId, ConflictDef> = {
       { place: 3, gains: { intrigueCards: 1 } },
     ],
   },
+
+  // --- Third batch: deeper pool so each game draws a more varied conflict
+  // deck (all VERIFY: names/tiers/rewards are placeholders). ---
+  // Tier I
+  routinePatrol: {
+    id: 'routinePatrol',
+    name: 'Routine Patrol (I)',
+    tier: 1,
+    rewards: [
+      { place: 1, gains: { solari: 3 } },
+      { place: 2, gains: { solari: 1 } },
+      { place: 3, gains: { water: 1 } },
+    ],
+  },
+  desertScouting: {
+    id: 'desertScouting',
+    name: 'Desert Scouting (I)',
+    tier: 1,
+    rewards: [
+      { place: 1, gains: { vp: 1 } },
+      { place: 2, gains: { water: 1 } },
+      { place: 3, gains: { spice: 1 } },
+    ],
+  },
+  // Tier II
+  raidTheSietch: {
+    id: 'raidTheSietch',
+    name: 'Raid the Sietch (II)',
+    tier: 2,
+    rewards: [
+      { place: 1, gains: { vp: 1, water: 1 } },
+      { place: 2, gains: { water: 1, spice: 1 } },
+      { place: 3, gains: { water: 1 } },
+    ],
+  },
+  guildBlockade: {
+    id: 'guildBlockade',
+    name: 'Guild Blockade (II)',
+    tier: 2,
+    rewards: [
+      { place: 1, gains: { vp: 1, solari: 2 } },
+      { place: 2, gains: { solari: 2 } },
+      { place: 3, gains: { solari: 1 } },
+    ],
+  },
+  courtlyIntrigue: {
+    id: 'courtlyIntrigue',
+    name: 'Courtly Intrigue (II)',
+    tier: 2,
+    rewards: [
+      { place: 1, gains: { intrigueCards: 2, vp: 1 } },
+      { place: 2, gains: { intrigueCards: 1 } },
+      { place: 3, gains: { solari: 1 } },
+    ],
+  },
+  meleeInTheDeep: {
+    id: 'meleeInTheDeep',
+    name: 'Melee in the Deep Desert (II)',
+    tier: 2,
+    rewards: [
+      { place: 1, gains: { spice: 3 } },
+      { place: 2, gains: { spice: 2 } },
+      { place: 3, gains: { water: 1 } },
+    ],
+  },
+  // Tier III
+  battleForSpice: {
+    id: 'battleForSpice',
+    name: 'Battle for the Spice (III)',
+    tier: 3,
+    rewards: [
+      { place: 1, gains: { vp: 2, spice: 2 } },
+      { place: 2, gains: { vp: 1 } },
+      { place: 3, gains: { spice: 2 } },
+    ],
+  },
+  imperialAmbitions: {
+    id: 'imperialAmbitions',
+    name: 'Imperial Ambitions (III)',
+    tier: 3,
+    rewards: [
+      { place: 1, gains: { vp: 2, anyInfluence: 1 } },
+      { place: 2, gains: { vp: 1 } },
+      { place: 3, gains: { solari: 2 } },
+    ],
+  },
+  theGreatConflict: {
+    id: 'theGreatConflict',
+    name: 'The Great Conflict (III)',
+    tier: 3,
+    rewards: [
+      { place: 1, gains: { vp: 3 } },
+      { place: 2, gains: { vp: 1 } },
+      { place: 3, gains: { spice: 1 } },
+    ],
+  },
+  desertSupremacy: {
+    id: 'desertSupremacy',
+    name: 'Desert Supremacy (III)',
+    tier: 3,
+    rewards: [
+      { place: 1, gains: { vp: 2, water: 2 } },
+      { place: 2, gains: { spice: 2 } },
+      { place: 3, gains: { water: 1 } },
+    ],
+  },
 };
 
 export const IMP_CONFLICT_LIST = Object.values(IMP_CONFLICT_DEFS);

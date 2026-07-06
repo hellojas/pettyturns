@@ -68,6 +68,32 @@ export const IMP_INTRIGUE_DEFS: Record<IntrigueDefId, IntrigueDef> = {
     // One VP per three troops still on the board at game end.
     endgameCondition: { metric: 'troops', per: 3 },
   },
+
+  // --- Third batch (all VERIFY: names/effects/counts are placeholders). ---
+  // combat
+  feignRetreat: { id: 'feignRetreat', name: 'Feign Retreat', kind: 'combat', count: 2, gains: { swords: 2 } },
+  overwhelmingForce: { id: 'overwhelmingForce', name: 'Overwhelming Force', kind: 'combat', count: 1, cost: { solari: 4 }, gains: { swords: 5 } },
+  desertTactics: { id: 'desertTactics', name: 'Desert Tactics', kind: 'combat', count: 2, gains: { swords: 3 } },
+  // plot
+  courtIntrigue: { id: 'courtIntrigue', name: 'Court Intrigue', kind: 'plot', count: 2, gains: { intrigueCards: 1, solari: 1 } },
+  spiceSpeculation: { id: 'spiceSpeculation', name: 'Spice Speculation', kind: 'plot', count: 2, gains: { spice: 1, solari: 1 } },
+  emergencyRecruitment: { id: 'emergencyRecruitment', name: 'Emergency Recruitment', kind: 'plot', count: 1, cost: { solari: 2 }, gains: { troops: 2 } },
+  // conditional endgame — broadens the scored metrics (spice / water / fremen)
+  spiceHoard: {
+    id: 'spiceHoard', name: 'Spice Hoard', kind: 'endgame', count: 1, gains: { vp: 1 },
+    // Scores if you have amassed at least this much spice.
+    endgameCondition: { metric: 'spice', atLeast: 6 },
+  },
+  desertStronghold: {
+    id: 'desertStronghold', name: 'Desert Stronghold', kind: 'endgame', count: 1, gains: { vp: 1 },
+    // Scores with strong standing on the Fremen track.
+    endgameCondition: { metric: 'influence', faction: 'fremen', atLeast: 4 },
+  },
+  waterReserves: {
+    id: 'waterReserves', name: 'Water Reserves', kind: 'endgame', count: 1, gains: { vp: 1 },
+    // One VP per four water still on hand at game end.
+    endgameCondition: { metric: 'water', per: 4 },
+  },
 };
 
 export const IMP_INTRIGUE_LIST = Object.values(IMP_INTRIGUE_DEFS);
