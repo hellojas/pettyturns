@@ -14,7 +14,7 @@ import { useImpStore } from '../lib/impStore';
 import { Icon, type IconName } from './imp/icons';
 import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
 import { Meeple, TroopCount } from './imp/tokens';
-import { ArtEmblem, SPACE_ART } from './imp/art';
+import { ArtEmblem, RegionBackdrop, SPACE_ART } from './imp/art';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
 const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
@@ -208,11 +208,19 @@ function FactionRegion({
   const spaces = IMP_SPACE_LIST.filter((s) => s.group === faction);
   return (
     <div className="rounded-lg p-1.5 flex flex-col gap-1.5" style={{ background: `${meta.accent}12`, border: `1px solid ${meta.accent}44` }}>
-      <div className="flex items-center gap-1.5 px-0.5">
-        <Icon name={meta.icon} size={16} />
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
-          {meta.label}
+      <div
+        className="relative overflow-hidden rounded-md px-1.5 py-1"
+        style={{ background: `linear-gradient(90deg, ${meta.accent}30, ${meta.accent}08 70%, transparent)` }}
+      >
+        <span className="absolute -right-1 -top-2 pointer-events-none" aria-hidden>
+          <Icon name={meta.icon} size={42} color={meta.accent} className="opacity-20" />
         </span>
+        <div className="relative flex items-center gap-1.5">
+          <Icon name={meta.icon} size={16} />
+          <span className="text-[12px] font-semibold tracking-wide" style={{ color: meta.accent }}>
+            {meta.label}
+          </span>
+        </div>
       </div>
       <InfluenceTrack faction={faction} view={view} />
       <div className="flex flex-col gap-1">
@@ -239,6 +247,7 @@ function SpaceCluster({
   selectedSpace,
   onSelect,
   cols = 1,
+  scene,
 }: {
   group: SpaceGroup;
   view: ImpVisibleState;
@@ -246,18 +255,24 @@ function SpaceCluster({
   selectedSpace?: string;
   onSelect: (id: string) => void;
   cols?: number;
+  /** Optional continuous region backdrop tying the cluster into one place. */
+  scene?: 'dunes' | 'skyline';
 }) {
   const meta = GROUP_META[group];
   const spaces = IMP_SPACE_LIST.filter((s) => s.group === group);
   return (
-    <div className="rounded-lg p-1.5" style={{ background: `${meta.accent}10`, border: `1px solid ${meta.accent}3a` }}>
-      <div className="flex items-center gap-1.5 px-0.5 mb-1.5">
+    <div
+      className="relative overflow-hidden rounded-lg p-1.5"
+      style={{ background: `${meta.accent}10`, border: `1px solid ${meta.accent}3a` }}
+    >
+      {scene && <RegionBackdrop scene={scene} color={meta.accent} opacity={0.5} />}
+      <div className="relative flex items-center gap-1.5 px-0.5 mb-1.5">
         <Icon name={meta.icon} size={15} />
         <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
           {meta.label}
         </span>
       </div>
-      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div className="relative grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {spaces.map((s) => (
           <SpaceTile
             key={s.id}
@@ -401,12 +416,12 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
 
       {/* Cities */}
       <div className="relative mt-2">
-        <SpaceCluster group="city" cols={2} {...common} />
+        <SpaceCluster group="city" cols={2} scene="skyline" {...common} />
       </div>
 
       {/* Deep desert */}
       <div className="relative mt-2">
-        <SpaceCluster group="desert" cols={3} {...common} />
+        <SpaceCluster group="desert" cols={3} scene="dunes" {...common} />
       </div>
     </div>
   );

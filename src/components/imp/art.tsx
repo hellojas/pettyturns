@@ -197,6 +197,49 @@ export function ArtEmblem({
   );
 }
 
+/**
+ * A wide, edge-to-edge region backdrop that slices to cover its container — used
+ * behind a whole cluster of spaces to make the region read like one place (a
+ * continuous stretch of dunes, a city skyline). Tinted by `color`.
+ */
+export function RegionBackdrop({
+  scene,
+  color,
+  opacity = 1,
+}: {
+  scene: 'dunes' | 'skyline';
+  color: string;
+  opacity?: number;
+}) {
+  return (
+    <svg
+      viewBox="0 0 320 90"
+      preserveAspectRatio="xMidYMax slice"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ color, opacity }}
+      aria-hidden
+    >
+      {scene === 'dunes' ? (
+        <>
+          <circle cx="268" cy="20" r="13" fill="currentColor" opacity="0.4" />
+          <path d="M0 56 Q54 40 112 52 Q170 64 232 48 Q282 36 320 50 V90 H0 Z" fill="currentColor" opacity="0.22" />
+          <path d="M0 68 Q60 54 132 64 Q204 74 262 60 Q296 54 320 62 V90 H0 Z" fill="currentColor" opacity="0.4" />
+          <path d="M0 80 Q84 71 168 78 Q244 84 320 75 V90 H0 Z" fill="currentColor" opacity="0.62" />
+        </>
+      ) : (
+        <>
+          <path
+            d="M0 90 V64 h12 v-8 h9 v8 h15 v-20 h9 v20 h16 v-12 h11 v12 h18 v-28 h9 v28 h15 v-10 h11 v10 h17 v-18 h9 v18 h16 v-24 h9 v24 h15 v-9 h11 v9 h17 v-16 h9 v16 h14 v-22 h9 v22 h13 V90 Z"
+            fill="currentColor"
+            opacity="0.4"
+          />
+          <path d="M0 90 V78 h300 V90 Z" fill="currentColor" opacity="0.2" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 /** Per-space scene art (covers every board space). */
 export const SPACE_ART: Record<SpaceId, Motif> = {
   conspire: 'throne',
