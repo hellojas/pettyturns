@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ImpCardDef } from '../imperium/types';
 import { Icon } from './imp/icons';
-import { cardAccent, costChips, gainsChips, type Chip } from './imp/visuals';
+import { cardAccent, cardFaction, costChips, gainsChips, type Chip } from './imp/visuals';
 import { CardArt } from './imp/cardArt';
 
 /** A row of effect chips (icon + amount). Empty renders nothing. */
@@ -51,6 +51,7 @@ export default function ImpCard({
   className?: string;
 }) {
   const accent = cardAccent(def);
+  const faction = cardFaction(def);
   const agent = gainsChips(def.agentGains);
   const agentCost = costChips(def.agentCost);
   const reveal = gainsChips(def.revealGains);
@@ -82,26 +83,28 @@ export default function ImpCard({
         {/* Accent spine */}
         <span className="absolute inset-y-0 left-0 w-1 z-10" style={{ background: accent }} />
 
-        {/* Illustrated banner: art with icons + cost + name overlaid */}
+        {/* Illustrated banner, following the rulebook card anatomy: art with an
+            agent-icon column down the left edge, the persuasion cost top-right,
+            and the name + faction band overlaid along the bottom. */}
         <div className="relative">
-          <CardArt def={def} accent={accent} height={52} className="opacity-95 group-hover:opacity-100 transition-opacity" />
+          <CardArt def={def} accent={accent} height={56} className="opacity-95 group-hover:opacity-100 transition-opacity" />
           {/* legibility scrim under the title */}
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: 'linear-gradient(180deg, #0d0906aa 0%, transparent 34%, transparent 46%, #14100bee 100%)' }}
+            style={{ background: 'linear-gradient(180deg, #0d0906aa 0%, transparent 30%, transparent 40%, #14100bf2 100%)' }}
           />
-          {/* Agent icons, top-left */}
-          <div className="absolute top-1 left-1.5 flex items-center gap-0.5 flex-wrap max-w-[70%]">
+          {/* Agent-icon column, left edge (rulebook layout) */}
+          <div className="absolute top-1 left-1 flex flex-col gap-0.5">
             {def.icons.length === 0 ? (
-              <span className="text-[8px] uppercase tracking-wider text-sand-100/75 bg-black/45 rounded px-1 py-0.5">
+              <span className="text-[8px] uppercase tracking-wider text-sand-100/75 bg-black/50 rounded px-1 py-0.5">
                 reveal
               </span>
             ) : (
               def.icons.map((ic, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center justify-center rounded-full ring-1 ring-black/50"
-                  style={{ background: '#00000077', padding: 2 }}
+                  className="inline-flex items-center justify-center rounded-[3px] ring-1 ring-black/60"
+                  style={{ background: '#0b0805cc', padding: 2 }}
                 >
                   <Icon name={ic} size={12} title={ic} />
                 </span>
@@ -119,9 +122,20 @@ export default function ImpCard({
               {def.cost}
             </span>
           )}
-          {/* Name, overlaid at the bottom of the art */}
-          <div className="absolute bottom-0.5 left-2.5 right-1.5 font-semibold text-[12.5px] leading-tight text-sand-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-            {def.name}
+          {/* Name + faction band, overlaid at the bottom of the art */}
+          <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-0.5">
+            <div className="font-semibold text-[12.5px] leading-tight text-sand-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
+              {def.name}
+            </div>
+            {faction && (
+              <div
+                className="inline-flex items-center gap-1 mt-0.5 rounded-sm px-1 py-[1px] text-[8px] font-bold uppercase tracking-wider"
+                style={{ background: `${faction.accent}33`, color: faction.accent, boxShadow: `inset 0 0 0 1px ${faction.accent}66` }}
+              >
+                <Icon name={faction.id} size={9} />
+                {faction.label}
+              </div>
+            )}
           </div>
         </div>
 

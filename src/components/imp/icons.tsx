@@ -20,129 +20,140 @@ export type IconName =
   | 'influence'
   | 'trash';
 
-/** Canonical tint per icon; faction/location colors double as region accents. */
+/**
+ * Canonical tint per icon, aligned to the Dune: Imperium rulebook: the four
+ * faction agent-icons keep their box colors (Corrino red, Guild amber, Bene
+ * Gesserit purple, Fremen blue), the three location icons are the printed
+ * pentagon-green / circle-blue / triangle-gold, and resources match their
+ * tokens — silver Solari, orange melange, blue water, red troop cubes, gold
+ * Victory-point orb and gold Intrigue emblem.
+ */
 export const ICON_COLORS: Record<IconName, string> = {
-  emperor: '#d24b3e',
+  emperor: '#c0392b',
   spacingGuild: '#e08a2b',
-  beneGesserit: '#a274d6',
-  fremen: '#2fa88f',
-  landsraad: '#d9b04b',
-  city: '#6b93c0',
-  spiceTrade: '#e0a52b',
-  spice: '#e0a52b',
-  solari: '#e6c34a',
+  beneGesserit: '#8e5bd0',
+  fremen: '#2fa3c9',
+  landsraad: '#4a9d4f',
+  city: '#5c7fd0',
+  spiceTrade: '#d9a12b',
+  spice: '#e0841f',
+  solari: '#c9ccd1',
   water: '#4aa3df',
-  troops: '#d24b3e',
-  sword: '#e0604f',
+  troops: '#c0392b',
+  sword: '#d94f3d',
   persuasion: '#e3bd78',
-  intrigue: '#b48be0',
+  intrigue: '#d9b64a',
   draw: '#cdbfa8',
-  vp: '#f2c94c',
+  vp: '#e6c34a',
   influence: '#e3bd78',
   trash: '#9c8770',
 };
 
 const PATHS: Record<IconName, ReactNode> = {
-  // --- Faction / location emblems ---
+  // --- Faction agent-icons (rulebook symbols) ---
+  // Emperor — Sardaukar / House Corrino helm.
   emperor: (
     <>
-      <path d="M3 17.5 L5.2 8 L9 12 L12 5.5 L15 12 L18.8 8 L21 17.5 Z" fill="currentColor" />
-      <rect x="4" y="18.5" width="16" height="2.4" rx="1" fill="currentColor" />
+      <path d="M11 2.5 h2 v4.2 h-2 Z" fill="currentColor" />
+      <path d="M5 13.5 C5 8.4 8 5 12 5 C16 5 19 8.4 19 13.5 L16.4 13.5 C16.4 9.6 14.7 7.6 12 7.6 C9.3 7.6 7.6 9.6 7.6 13.5 Z" fill="currentColor" />
+      <path d="M8 13.2 h8 l-1.3 4.6 L12 21.4 L9.3 17.8 Z" fill="currentColor" />
+      <path d="M10.4 14 h3.2 v1.8 h-3.2 Z" fill="#1a120b" opacity="0.7" />
     </>
   ),
+  // Spacing Guild — foldspace infinity.
   spacingGuild: (
-    <>
-      <path d="M12 2 L22 12 L12 22 L2 12 Z" fill="currentColor" opacity="0.35" />
-      <path d="M12 6.5 L17.5 12 L12 17.5 L6.5 12 Z" fill="currentColor" />
-    </>
+    <g fill="none" stroke="currentColor" strokeWidth="2.6">
+      <circle cx="8" cy="12" r="3.7" />
+      <circle cx="16" cy="12" r="3.7" />
+    </g>
   ),
+  // Bene Gesserit — mirrored crescents around a central almond.
   beneGesserit: (
     <>
-      <path
-        d="M2 12 C6 5.5 18 5.5 22 12 C18 18.5 6 18.5 2 12 Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <circle cx="12" cy="12" r="3.1" fill="currentColor" />
+      <g fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <path d="M9.3 4.3 C4.4 8 4.4 16 9.3 19.7" />
+        <path d="M14.7 4.3 C19.6 8 19.6 16 14.7 19.7" />
+      </g>
+      <ellipse cx="12" cy="12" rx="2.1" ry="3.6" fill="currentColor" />
     </>
   ),
+  // Fremen — maker hook / crescent inside a ring.
   fremen: (
-    <path
-      d="M4.5 20.5 C4 12 10 5 19.5 4.5 C13.5 7 11 11.5 12.4 16 C9.5 15 6.8 16.5 4.5 20.5 Z"
-      fill="currentColor"
-    />
-  ),
-  landsraad: (
     <>
-      <path d="M12 3.5 L21 9 L3 9 Z" fill="currentColor" />
-      <rect x="5" y="10" width="2.4" height="8" fill="currentColor" />
-      <rect x="10.8" y="10" width="2.4" height="8" fill="currentColor" />
-      <rect x="16.6" y="10" width="2.4" height="8" fill="currentColor" />
-      <rect x="3.5" y="18.6" width="17" height="2.2" rx="0.8" fill="currentColor" />
-    </>
-  ),
-  city: (
-    <path
-      d="M4 21 V11 h3 V8 h2 v3 h3 V6 h2 v5 h3 V8 h2 v3 h1 V21 Z"
-      fill="currentColor"
-    />
-  ),
-  spiceTrade: (
-    <>
-      <path d="M12 2.5 L20 7 V15.4 L12 20 L4 15.4 V7 Z" fill="currentColor" opacity="0.9" />
-      <circle cx="9.6" cy="10" r="1.3" fill="#2b2118" />
-      <circle cx="14.4" cy="10" r="1.3" fill="#2b2118" />
-      <circle cx="12" cy="14" r="1.3" fill="#2b2118" />
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.45" />
+      <path
+        d="M7.5 6.5 C12.5 6 16.5 9 16.5 13.4 C16.5 16.6 14.2 18.6 11.4 18.2 C13 16.6 13.3 14 11.8 12.1 C10.4 10.3 8.4 9.6 6.2 10 C6.4 8.6 6.8 7.4 7.5 6.5 Z"
+        fill="currentColor"
+      />
     </>
   ),
 
-  // --- Resource glyphs ---
+  // --- Location agent-icons (rulebook shapes) ---
+  landsraad: <path d="M12 2.8 L20.5 9 L17.2 19.2 H6.8 L3.5 9 Z" fill="currentColor" />,
+  city: (
+    <>
+      <circle cx="12" cy="12" r="9" fill="currentColor" />
+      <circle cx="12" cy="12" r="4.6" fill="none" stroke="#12100c" strokeWidth="1.6" opacity="0.5" />
+    </>
+  ),
+  spiceTrade: <path d="M12 3.5 L21 19.5 H3 Z" fill="currentColor" />,
+
+  // --- Resource glyphs (match the physical tokens) ---
+  // Spice / melange — orange hexagon with grains.
   spice: (
     <>
-      <path d="M12 3 L18.5 12 L12 21 L5.5 12 Z" fill="currentColor" />
-      <circle cx="12" cy="10" r="1.2" fill="#2b2118" />
-      <circle cx="10.4" cy="13" r="1.1" fill="#2b2118" />
-      <circle cx="13.6" cy="13" r="1.1" fill="#2b2118" />
+      <path d="M12 2.6 L20.1 7.3 V16.7 L12 21.4 L3.9 16.7 V7.3 Z" fill="currentColor" />
+      <circle cx="12" cy="9.6" r="1.15" fill="#2b1a0b" opacity="0.85" />
+      <circle cx="10.2" cy="13" r="1.05" fill="#2b1a0b" opacity="0.85" />
+      <circle cx="13.8" cy="13" r="1.05" fill="#2b1a0b" opacity="0.85" />
     </>
   ),
+  // Solari — silver coin.
   solari: (
     <>
-      <circle cx="12" cy="12" r="8.5" fill="currentColor" />
-      <circle cx="12" cy="12" r="5.6" fill="none" stroke="#2b2118" strokeWidth="1.3" opacity="0.55" />
-      <path d="M12 7.5 V16.5 M9.8 9.6 h4.4 M9.8 14.4 h4.4" stroke="#2b2118" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="8.6" fill="currentColor" />
+      <circle cx="12" cy="12" r="8.6" fill="none" stroke="#5c5f66" strokeWidth="1" opacity="0.5" />
+      <circle cx="12" cy="12" r="5.4" fill="none" stroke="#5c5f66" strokeWidth="1.1" opacity="0.6" />
+      <path d="M12 8.4 L13 11 L15.6 11 L13.5 12.7 L14.3 15.3 L12 13.7 L9.7 15.3 L10.5 12.7 L8.4 11 L11 11 Z" fill="#6b6f77" opacity="0.75" />
     </>
   ),
-  water: (
-    <path
-      d="M12 3 C12 3 5 11 5 15.2 A7 7 0 0 0 19 15.2 C19 11 12 3 12 3 Z"
-      fill="currentColor"
-    />
-  ),
+  // Water — teardrop.
+  water: <path d="M12 2.8 C12 2.8 5 11 5 15.4 A7 7 0 0 0 19 15.4 C19 11 12 2.8 12 2.8 Z" fill="currentColor" />,
+  // Troops — red garrison cube (isometric).
   troops: (
-    <path
-      d="M12 3 L20 6 V11.5 C20 16.5 16.4 19.6 12 21 C7.6 19.6 4 16.5 4 11.5 V6 Z"
-      fill="currentColor"
-    />
+    <>
+      <path d="M12 3 L20 7 L12 11 L4 7 Z" fill="currentColor" />
+      <path d="M4 7 L12 11 V20.5 L4 16.5 Z" fill="currentColor" opacity="0.72" />
+      <path d="M20 7 L12 11 V20.5 L20 16.5 Z" fill="currentColor" opacity="0.5" />
+    </>
   ),
+  // Sword — combat / swords count (a kindjal blade).
   sword: (
     <>
-      <path d="M20 3 L21 4 L11.5 14 L10 11.5 Z" fill="currentColor" />
-      <path d="M11 13 L11.6 13.6 L7.5 18 L5.5 18.5 L6 16.5 Z" fill="currentColor" />
-      <rect x="4.4" y="17.2" width="4.4" height="1.8" rx="0.9" transform="rotate(-45 6.6 18.1)" fill="currentColor" />
+      <path d="M12 2.5 L14 6 V15 L12 17.5 L10 15 V6 Z" fill="currentColor" />
+      <rect x="8.5" y="15.4" width="7" height="1.8" rx="0.9" fill="currentColor" />
+      <rect x="11" y="17" width="2" height="4.2" rx="0.8" fill="currentColor" />
     </>
   ),
+  // Persuasion — influence swirl.
   persuasion: (
     <path
-      d="M12 2 L14.6 9 L22 12 L14.6 15 L12 22 L9.4 15 L2 12 L9.4 9 Z"
-      fill="currentColor"
+      d="M12 3.4 C16.9 3.4 20.4 7.2 19.4 12 C18.5 16.3 14.3 18.5 11 16.6 C8.7 15.3 8.3 12 10.2 10.4 C11.7 9.1 13.9 9.5 14.6 11.2"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
     />
   ),
+  // Intrigue — gold pinwheel emblem (matches the card back).
   intrigue: (
-    <>
-      <rect x="4" y="6" width="16" height="12" rx="1.6" fill="currentColor" opacity="0.9" />
-      <path d="M4.6 7 L12 12.5 L19.4 7" fill="none" stroke="#2b2118" strokeWidth="1.4" opacity="0.7" />
-    </>
+    <g fill="currentColor">
+      <path d="M12 12 C12 7.5 13.4 4.5 16.5 4 C15.4 6.6 14 9.4 12 12 Z" />
+      <path d="M12 12 C16.5 12 19.5 13.4 20 16.5 C17.4 15.4 14.6 14 12 12 Z" />
+      <path d="M12 12 C12 16.5 10.6 19.5 7.5 20 C8.6 17.4 10 14.6 12 12 Z" />
+      <path d="M12 12 C7.5 12 4.5 10.6 4 7.5 C6.6 8.6 9.4 10 12 12 Z" />
+      <circle cx="12" cy="12" r="1.7" />
+    </g>
   ),
   draw: (
     <>
@@ -151,16 +162,23 @@ const PATHS: Record<IconName, ReactNode> = {
       <rect x="9" y="10.4" width="6" height="1.6" rx="0.8" fill="#2b2118" opacity="0.55" />
     </>
   ),
+  // Victory point — gilded globe.
   vp: (
-    <path
-      d="M12 2.5 L14.9 8.6 L21.5 9.4 L16.6 13.9 L18 20.4 L12 17 L6 20.4 L7.4 13.9 L2.5 9.4 L9.1 8.6 Z"
-      fill="currentColor"
-    />
+    <>
+      <circle cx="12" cy="12" r="8.6" fill="currentColor" />
+      <g fill="none" stroke="#8a6d1e" strokeWidth="1" opacity="0.7">
+        <ellipse cx="12" cy="12" rx="3.4" ry="8.6" />
+        <line x1="3.4" y1="12" x2="20.6" y2="12" />
+        <path d="M4.6 8 H19.4 M4.6 16 H19.4" />
+      </g>
+    </>
   ),
+  // Influence — faction cube marker.
   influence: (
     <>
-      <circle cx="12" cy="12" r="9" fill="currentColor" opacity="0.28" />
-      <path d="M12 6 L18 15 H6 Z" fill="currentColor" />
+      <path d="M12 3.5 L19.5 7.3 L12 11.1 L4.5 7.3 Z" fill="currentColor" />
+      <path d="M4.5 7.3 L12 11.1 V19.5 L4.5 15.7 Z" fill="currentColor" opacity="0.72" />
+      <path d="M19.5 7.3 L12 11.1 V19.5 L19.5 15.7 Z" fill="currentColor" opacity="0.5" />
     </>
   ),
   trash: (

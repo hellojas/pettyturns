@@ -121,10 +121,11 @@ function SpaceTile({
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+          <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
             {costs.length > 0 && (
               <span className="inline-flex items-center gap-1">
                 <ChipRow chips={costs} tone="cost" />
+                <span className="text-sand-100/45 text-[11px] font-bold" title="pay to gain">→</span>
               </span>
             )}
             <ChipRow chips={gains} />

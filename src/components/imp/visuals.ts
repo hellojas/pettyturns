@@ -31,6 +31,15 @@ const FACTION_LABEL: Record<string, string> = {
   fremen: 'Fremen',
 };
 
+/** The card's faction (for the rulebook-style faction band), if it has one. */
+export function cardFaction(def: ImpCardDef): { id: IconName; label: string; accent: string } | null {
+  const f = def.icons.find(
+    (i) => i === 'emperor' || i === 'spacingGuild' || i === 'beneGesserit' || i === 'fremen',
+  );
+  if (!f) return null;
+  return { id: f as IconName, label: FACTION_LABEL[f].toUpperCase(), accent: ICON_COLORS[f as IconName] };
+}
+
 /** Turn a Gains bundle into ordered, icon-backed chips for the UI. */
 export function gainsChips(g: Gains | undefined): Chip[] {
   if (!g) return [];
