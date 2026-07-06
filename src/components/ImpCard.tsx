@@ -39,6 +39,7 @@ export default function ImpCard({
   signetLeaderName,
   signetGains,
   signetCost,
+  signetNote,
   onClick,
   footer,
   className = '',
@@ -55,6 +56,8 @@ export default function ImpCard({
   signetGains?: Gains;
   /** For a signet card: the leader's signet cost, if any. */
   signetCost?: Costs;
+  /** For a signet card: a note used when the signet can't be shown as chips. */
+  signetNote?: string;
   onClick?: () => void;
   footer?: ReactNode;
   className?: string;
@@ -171,8 +174,10 @@ export default function ImpCard({
                   </span>
                   {signet.length > 0 ? (
                     <ChipRow chips={signet} />
+                  ) : signetNote ? (
+                    <span className="text-[9px] text-sand-100/55 leading-snug">{signetNote}</span>
                   ) : (
-                    def.signet && !signetGains && (
+                    !signetGains && (
                       <span className="text-[9px] text-sand-100/40 italic">fires your leader's signet power</span>
                     )
                   )}

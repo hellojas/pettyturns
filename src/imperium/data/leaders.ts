@@ -12,10 +12,16 @@ import type { ImpLeaderDef, LeaderId } from '../types';
  * `deckPeek`); a `passiveNote` remains available for any ability still awaiting
  * an engine hook.
  *
- * VERIFY: every summary is original wording and every number below is a
- * placeholder to be checked against the leader sheets you own. Correct the
- * `params` (and add/remove passives) to match your copy — the engine reads
- * only this config.
+ * The `signetGains` / `signetCost` / `signetNote` fields below have been
+ * reconciled against the base-game leader sheets (effect types confirmed; a
+ * few amounts, e.g. Ilban's solari, are still worth a final check against your
+ * copy). Signets the Gains DSL can't express (Leto's conditional influence,
+ * Rabban's deploy, Helena's Imperium-Row manipulation) carry a `signetNote`
+ * and are shown in the UI but not auto-applied by the engine.
+ *
+ * VERIFY: the machine-enforced `passives` below are still placeholders — every
+ * summary is original wording and the `params` numbers/hooks are guesses to be
+ * checked against the leader sheets you own. The engine reads only this config.
  *
  * PORTRAITS: each leader carries a `portrait` pointing at an original generated
  * illustration under `/public/portraits` (regenerate with
@@ -29,6 +35,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'paulAtreides',
     name: 'Paul Atreides',
     portrait: '/portraits/paulAtreides.svg',
+    // Signet "Discipline": draw a card.
     signetGains: { drawCards: 1 },
     passives: [
       {
@@ -51,7 +58,10 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'dukeLeto',
     name: 'Duke Leto Atreides',
     portrait: '/portraits/dukeLeto.svg',
-    signetGains: { solari: 2 },
+    // Signet: gain 1 influence with a faction where an opponent leads you.
+    // Conditional target — not expressible as flat Gains, so it's note-only.
+    signetGains: {},
+    signetNote: 'Gain 1 influence with a faction where an opponent has more influence than you.',
     passives: [
       {
         id: 'leto-reveal-income',
@@ -71,8 +81,9 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'baronHarkonnen',
     name: 'Baron Vladimir Harkonnen',
     portrait: '/portraits/baronHarkonnen.svg',
+    // Signet: pay 1 solari to draw an Intrigue card.
     signetGains: { intrigueCards: 1 },
-    signetCost: {},
+    signetCost: { solari: 1 },
     passives: [
       {
         id: 'baron-reveal-scheme',
@@ -92,7 +103,10 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'glossuRabban',
     name: 'Glossu "The Beast" Rabban',
     portrait: '/portraits/glossuRabban.svg',
-    signetGains: { troops: 1 },
+    // Signet "Brutality": deploy up to 2 of your troops to the current conflict.
+    // Deploying isn't a flat Gain (needs a conflict + garrison), so it's note-only.
+    signetGains: {},
+    signetNote: 'Deploy up to 2 of your troops to the current conflict.',
     passives: [
       {
         id: 'rabban-brute-force',
@@ -112,7 +126,8 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'arianaThorvald',
     name: 'Countess Ariana Thorvald',
     portrait: '/portraits/arianaThorvald.svg',
-    signetGains: { spice: 1 },
+    // Signet: gain 1 water.
+    signetGains: { water: 1 },
     passives: [
       {
         id: 'ariana-desert-harvest',
@@ -132,7 +147,8 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'memnonThorvald',
     name: 'Earl Memnon Thorvald',
     portrait: '/portraits/memnonThorvald.svg',
-    signetGains: { troops: 1 },
+    // Signet: gain 1 spice.
+    signetGains: { spice: 1 },
     passives: [
       {
         id: 'memnon-landsraad-favor',
@@ -152,7 +168,10 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'helenaRichese',
     name: 'Helena Richese',
     portrait: '/portraits/helenaRichese.svg',
-    signetGains: { solari: 1, drawCards: 1 },
+    // Signet: trash a card in the Imperium Row and refill the empty slot from
+    // the deck. Row manipulation isn't a flat Gain, so it's note-only.
+    signetGains: {},
+    signetNote: 'Trash a card in the Imperium Row, then refill the empty slot from the deck.',
     passives: [
       {
         id: 'helena-city-holdings',
@@ -172,7 +191,8 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     id: 'ilbanRichese',
     name: 'Count Ilban Richese',
     portrait: '/portraits/ilbanRichese.svg',
-    signetGains: { solari: 1 },
+    // Signet: gain 2 solari.
+    signetGains: { solari: 2 },
     passives: [
       {
         id: 'ilban-manufacturing',

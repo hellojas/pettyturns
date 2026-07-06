@@ -55,6 +55,7 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
                   signetLeaderName={def.signet ? leader?.name : undefined}
                   signetGains={def.signet ? leader?.signetGains : undefined}
                   signetCost={def.signet ? leader?.signetCost : undefined}
+                  signetNote={def.signet ? leader?.signetNote : undefined}
                   onClick={() => setPending(selected ? null : { cardId, deploy: 0 })}
                 />
               );
