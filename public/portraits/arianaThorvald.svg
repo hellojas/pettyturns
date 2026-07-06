@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="200" role="img" aria-label="arianaThorvald portrait">
+  <defs>
+    <radialGradient id="arianaThorvald-bg" cx="50%" cy="34%" r="80%">
+      <stop offset="0%" stop-color="#2a7566"/>
+      <stop offset="100%" stop-color="#0a1f1a"/>
+    </radialGradient>
+    <radialGradient id="arianaThorvald-vig" cx="50%" cy="45%" r="65%">
+      <stop offset="55%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.5"/>
+    </radialGradient>
+    <clipPath id="arianaThorvald-clip"><rect x="0" y="0" width="100" height="100" rx="10"/></clipPath>
+  </defs>
+  <g clip-path="url(#arianaThorvald-clip)">
+    <rect width="100" height="100" fill="url(#arianaThorvald-bg)"/>
+    <path d="M50 14 L80 24 V52 C80 72 66 84 50 92 C34 84 20 72 20 52 V24 Z"
+    fill="none" stroke="#54d0b4" stroke-width="2" opacity="0.12"/>
+    
+    <path d="M6 100 C6 76 24 66 50 66 C76 66 94 76 94 100 Z" fill="#1d5148"/>
+    <path d="M6 100 C6 76 24 66 50 66 C76 66 94 76 94 100 Z" fill="#000" opacity="0.18"/>
+    <path d="M38 68 L50 84 L62 68 L58 66 L50 76 L42 66 Z" fill="#54d0b4" opacity="0.85"/>
+  
+    <path d="M31 40 C31 22 69 22 69 40 C69 33 64 27 50 27 C36 27 31 33 31 40 Z" fill="#2a1a12"/>
+    
+    <rect x="43" y="52" width="14" height="16" rx="6" fill="#e0be92"/>
+    <rect x="43" y="52" width="14" height="16" rx="6" fill="#000" opacity="0.12"/>
+    
+    <ellipse cx="50" cy="42" rx="16.5" ry="19" fill="#e0be92"/>
+    <ellipse cx="33.5" cy="43" rx="2.4" ry="3.4" fill="#e0be92"/>
+    <ellipse cx="66.5" cy="43" rx="2.4" ry="3.4" fill="#e0be92"/>
+  
+    <path d="M40 39 Q43.5 37.2 47 39" stroke="#241a12" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+       <path d="M53 39 Q56.5 37.2 60 39" stroke="#241a12" stroke-width="1.5" fill="none" stroke-linecap="round"/><ellipse cx="42" cy="43" rx="3.1" ry="2" fill="#2f8fe0"/>
+       <ellipse cx="42" cy="43" rx="3.1" ry="2" fill="none" stroke="#7fd0ff" stroke-width="0.7"/><ellipse cx="58" cy="43" rx="3.1" ry="2" fill="#2f8fe0"/>
+       <ellipse cx="58" cy="43" rx="3.1" ry="2" fill="none" stroke="#7fd0ff" stroke-width="0.7"/><path d="M50 44 L48 50 Q50 51.5 52 50" fill="none" stroke="#00000040" stroke-width="1.2" stroke-linecap="round"/><path d="M46 54 Q50 56 54 54" fill="none" stroke="#00000045" stroke-width="1.3" stroke-linecap="round"/>
+    <g>
+        <path d="M31 40 C31 20 69 20 69 40 C69 31 62 25 50 25 C38 25 31 31 31 40 Z" fill="#2a1a12"/>
+        <ellipse cx="50" cy="20" rx="8" ry="6.5" fill="#2a1a12"/>
+        <path d="M31 40 C28 46 27 54 30 60 L34 44 Z M69 40 C72 46 73 54 70 60 L66 44 Z" fill="#2a1a12"/>
+      </g>
+    <rect width="100" height="100" fill="url(#arianaThorvald-vig)"/>
+    <circle cx="88" cy="12" r="6.5" fill="#000" opacity="0.35"/>
+    <circle cx="88" cy="12" r="4" fill="#54d0b4"/>
+    <rect x="0.75" y="0.75" width="98.5" height="98.5" rx="9.25" fill="none" stroke="#ffffff" stroke-opacity="0.14" stroke-width="1.5"/>
+  </g>
+</svg>

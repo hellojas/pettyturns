@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { IMP_LEADER_LIST } from '../imperium/data/leaders';
 import { useImpStore } from '../lib/impStore';
+import LeaderPortrait from '../components/imp/LeaderPortrait';
+import { PLAYER_COLORS } from '../components/imp/visuals';
 
 interface SeatDraft {
   name: string;
@@ -28,7 +30,7 @@ export default function NewGame() {
     <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-start justify-center p-8">
       <div className="w-full max-w-lg space-y-6">
         <header className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-semibold text-sand-300">New game</h1>
+          <h1 className="font-display text-2xl font-bold text-sand-300 tracking-wide">New game</h1>
           <Link to="/" className="text-sm text-sand-100/50 hover:text-sand-200">
             ← back
           </Link>
@@ -37,6 +39,7 @@ export default function NewGame() {
           {seats.map((seat, i) => (
             <div key={i} className="flex gap-2 items-center">
               <span className="text-xs text-sand-100/40 w-6">P{i + 1}</span>
+              <LeaderPortrait leaderId={seat.leaderId} size={40} ring={PLAYER_COLORS[i % 4]} />
               <input
                 className="input flex-1"
                 placeholder={`Player ${i + 1}`}

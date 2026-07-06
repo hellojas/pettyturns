@@ -199,8 +199,20 @@ export interface ConflictDef {
  *                     the current conflict.
  * - `onRoundStart`    fires at recall, once per new round (control-bonus style
  *                     passive income).
+ * - `onAcquireCard`   fires whenever the leader acquires a card (buys from the
+ *                     imperium row or reserve, or gains one from a space).
+ * - `onCombatWin`     fires when the leader takes first place in a conflict.
+ *
+ * `onAcquireCard` and `onCombatWin` grant their `params.gains` (like the income
+ * hooks); they carry no other params.
  */
-export type LeaderPassiveHook = 'onReveal' | 'onAgentPlaced' | 'combatStrength' | 'onRoundStart';
+export type LeaderPassiveHook =
+  | 'onReveal'
+  | 'onAgentPlaced'
+  | 'combatStrength'
+  | 'onRoundStart'
+  | 'onAcquireCard'
+  | 'onCombatWin';
 
 export interface LeaderPassiveParams {
   /** Gains granted by the hook (onReveal / onAgentPlaced / onRoundStart). */

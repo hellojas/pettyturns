@@ -3,6 +3,9 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        display: ['Cinzel', 'Georgia', 'ui-serif', 'serif'],
+      },
       colors: {
         // Desert-tabletop palette (placeholder, refine later)
         sand: {

@@ -12,8 +12,11 @@ import type {
 import { IMP_FACTIONS } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 import { Icon, type IconName } from './imp/icons';
-import { SpaceArt } from './imp/cardArt';
 import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
+import { Meeple, TroopCount } from './imp/tokens';
+import { RegionBackdrop, type BackdropScene } from './imp/art';
+import { SpaceArt } from './imp/cardArt';
+import VpTrack from './imp/VpTrack';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
 const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
@@ -31,17 +34,6 @@ function specialLabel(space: BoardSpaceDef): string | null {
     default:
       return null;
   }
-}
-
-/** A small colored agent disc in a player's seat color. */
-function AgentDisc({ color, title }: { color: string; title?: string }) {
-  return (
-    <span
-      className="inline-block w-3 h-3 rounded-full ring-2 ring-black/40 shrink-0"
-      style={{ background: color }}
-      title={title}
-    />
-  );
 }
 
 function ChipRow({ chips, tone }: { chips: Chip[]; tone?: 'cost' }) {
@@ -108,7 +100,7 @@ function SpaceTile({
       }}
     >
       <span className="absolute inset-y-0 left-0 w-1 z-10" style={{ background: accent }} />
-      <div className="flex gap-1.5 pl-1">
+      <div className="relative flex gap-1.5 pl-1">
         {/* Space illustration */}
         <div className="shrink-0 self-start mt-0.5 rounded-md overflow-hidden ring-1 ring-black/40">
           <SpaceArt space={space} accent={accent} size={38} />
@@ -118,14 +110,14 @@ function SpaceTile({
             <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
             {space.combat && <Icon name="sword" size={12} title="opens the conflict" />}
             {space.maker && bonus > 0 && (
-              <span className="inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
+              <span className="anim-pulse inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
                 <Icon name="spice" size={12} />
                 {bonus}
               </span>
             )}
             {occupant && (
-              <span className="ml-auto">
-                <AgentDisc color={PLAYER_COLORS[occupantIdx % 4]} title={`agent: ${view.players[occupant].name}`} />
+              <span className="ml-auto anim-drop">
+                <Meeple color={PLAYER_COLORS[occupantIdx % 4]} size={15} title={`agent: ${view.players[occupant].name}`} />
               </span>
             )}
           </div>
@@ -146,7 +138,7 @@ function SpaceTile({
           </div>
           {controller && (
             <div className="mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
-              <AgentDisc color={PLAYER_COLORS[controllerIdx % 4]} />
+              <Meeple color={PLAYER_COLORS[controllerIdx % 4]} size={11} />
               controlled by {view.players[controller].name}
             </div>
           )}
@@ -223,21 +215,19 @@ function FactionRegion({
   const spaces = IMP_SPACE_LIST.filter((s) => s.group === faction);
   return (
     <div className="rounded-lg p-1.5 flex flex-col gap-1.5" style={{ background: `${meta.accent}12`, border: `1px solid ${meta.accent}44` }}>
-      <div className="flex items-center gap-1.5 px-0.5">
-        <span
-          className="inline-flex items-center justify-center rounded-full shrink-0"
-          style={{
-            width: 22,
-            height: 22,
-            background: `radial-gradient(circle at 50% 35%, ${meta.accent}55, ${meta.accent}18)`,
-            boxShadow: `inset 0 0 0 1px ${meta.accent}88`,
-          }}
-        >
-          <Icon name={meta.icon} size={14} />
+      <div
+        className="relative overflow-hidden rounded-md px-1.5 py-1"
+        style={{ background: `linear-gradient(90deg, ${meta.accent}30, ${meta.accent}08 70%, transparent)` }}
+      >
+        <span className="absolute -right-1 -top-2 pointer-events-none" aria-hidden>
+          <Icon name={meta.icon} size={42} color={meta.accent} className="opacity-20" />
         </span>
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
-          {meta.label}
-        </span>
+        <div className="relative flex items-center gap-1.5">
+          <Icon name={meta.icon} size={16} />
+          <span className="font-display text-[13px] font-bold tracking-wide" style={{ color: meta.accent }}>
+            {meta.label}
+          </span>
+        </div>
       </div>
       <InfluenceTrack faction={faction} view={view} />
       <div className="flex flex-col gap-1">
@@ -264,6 +254,7 @@ function SpaceCluster({
   selectedSpace,
   onSelect,
   cols = 1,
+  scene,
 }: {
   group: SpaceGroup;
   view: ImpVisibleState;
@@ -271,18 +262,24 @@ function SpaceCluster({
   selectedSpace?: string;
   onSelect: (id: string) => void;
   cols?: number;
+  /** Optional continuous region backdrop tying the cluster into one place. */
+  scene?: BackdropScene;
 }) {
   const meta = GROUP_META[group];
   const spaces = IMP_SPACE_LIST.filter((s) => s.group === group);
   return (
-    <div className="rounded-lg p-1.5" style={{ background: `${meta.accent}10`, border: `1px solid ${meta.accent}3a` }}>
-      <div className="flex items-center gap-1.5 px-0.5 mb-1.5">
+    <div
+      className="relative overflow-hidden rounded-lg p-1.5"
+      style={{ background: `${meta.accent}10`, border: `1px solid ${meta.accent}3a` }}
+    >
+      {scene && <RegionBackdrop scene={scene} color={meta.accent} opacity={0.5} />}
+      <div className="relative flex items-center gap-1.5 px-0.5 mb-1.5">
         <Icon name={meta.icon} size={15} />
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
+        <span className="font-display text-[12px] font-bold tracking-wide" style={{ color: meta.accent }}>
           {meta.label}
         </span>
       </div>
-      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div className="relative grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {spaces.map((s) => (
           <SpaceTile
             key={s.id}
@@ -323,7 +320,7 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
         <>
           <div className="relative flex items-center gap-2">
             <Icon name="sword" size={20} />
-            <span className="font-semibold text-sand-100 text-[15px] leading-tight">{conflict.name}</span>
+            <span className="font-display font-bold text-sand-100 text-[16px] leading-tight">{conflict.name}</span>
             <span
               className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
               style={{ background: `${tierColor}33`, color: tierColor, border: `1px solid ${tierColor}77` }}
@@ -352,10 +349,11 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
               <>
                 <span className="text-[9px] uppercase tracking-wider text-red-300/70">committed</span>
                 {combatants.map((pid) => (
-                  <span key={pid} className="inline-flex items-center gap-0.5">
-                    <AgentDisc color={PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]} title={view.players[pid].name} />
-                    <span className="text-[10px] text-sand-100/70">{view.players[pid].inConflict}</span>
-                  </span>
+                  <TroopCount
+                    key={pid}
+                    color={PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]}
+                    count={view.players[pid].inConflict}
+                  />
                 ))}
               </>
             ) : (
@@ -374,7 +372,7 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
 function BoardHeader({ view }: { view: ImpVisibleState }) {
   return (
     <div className="relative rounded-xl overflow-hidden mb-2.5 ring-1 ring-[#7b422255]">
-      <svg viewBox="0 0 600 90" width="100%" height="76" preserveAspectRatio="xMidYMid slice" aria-hidden="true" className="block">
+      <svg viewBox="0 0 600 90" width="100%" height="72" preserveAspectRatio="xMidYMid slice" aria-hidden="true" className="block">
         <defs>
           <linearGradient id="bh-sky" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#c98a3e" stopOpacity="0.55" />
@@ -399,7 +397,7 @@ function BoardHeader({ view }: { view: ImpVisibleState }) {
         </g>
         {/* distant sandworm cresting a dune */}
         <path d="M120 78 C140 52 168 44 190 50 C205 54 214 44 218 30 C224 46 218 62 200 68 C182 74 168 78 160 90 Z" fill="#120c07" opacity="0.9" />
-        <path d="M128 80 C146 58 170 51 190 56 C202 59 210 51 214 40 C218 53 212 66 196 71 C180 76 168 80 162 90 Z" fill="#7a4a22" opacity="0.8" />
+        <path d="M128 80 C146 58 170 51 190 56 C202 59 210 51 214 40 C218 53 212 66 196 71 C180 76 168 80 162 90 Z" fill="#7a4a22" opacity="0.85" />
         {/* dune ridges */}
         <path d="M0 62 Q150 46 300 60 T600 54 V90 H0 Z" fill="#2a1c10" />
         <path d="M0 74 Q160 62 340 74 T600 70 V90 H0 Z" fill="#1c130b" />
@@ -407,7 +405,7 @@ function BoardHeader({ view }: { view: ImpVisibleState }) {
       <div className="absolute inset-0 flex items-center justify-between px-4">
         <div>
           <div className="text-[10px] uppercase tracking-[0.3em] text-amber-200/70">Imperium</div>
-          <div className="text-lg font-bold tracking-wide text-sand-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+          <div className="font-display text-lg font-bold tracking-wide text-sand-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
             Arrakis
           </div>
         </div>
@@ -453,37 +451,44 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
 
   return (
     <div
-      className="rounded-2xl p-2.5 sm:p-3"
+      className="relative rounded-2xl p-2.5 sm:p-3 overflow-hidden"
       style={{
         background: 'radial-gradient(120% 80% at 50% -10%, #2a2016, #17110b 75%)',
         border: '1px solid #7b422277',
         boxShadow: 'inset 0 0 60px -20px #000',
       }}
     >
-      <BoardHeader view={view} />
-
-      {/* Faction regions across the top */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="tex-spice absolute inset-0 pointer-events-none opacity-70" aria-hidden />
+      {/* Arrakis panorama header */}
+      <div className="relative">
+        <BoardHeader view={view} />
+      </div>
+      {/* Victory track across the top edge */}
+      <div className="relative mb-2">
+        <VpTrack view={view} />
+      </div>
+      {/* Faction regions */}
+      <div className="relative grid grid-cols-2 xl:grid-cols-4 gap-2">
         {IMP_FACTIONS.map((f) => (
           <FactionRegion key={f} faction={f} {...common} />
         ))}
       </div>
 
       {/* Landsraad · Conflict · CHOAM */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr_0.85fr] gap-2 mt-2 items-stretch">
-        <SpaceCluster group="landsraad" cols={1} {...common} />
+      <div className="relative grid grid-cols-1 lg:grid-cols-[1.15fr_1fr_0.85fr] gap-2 mt-2 items-stretch">
+        <SpaceCluster group="landsraad" cols={1} scene="columns" {...common} />
         <ConflictMedallion view={view} />
-        <SpaceCluster group="choam" cols={1} {...common} />
+        <SpaceCluster group="choam" cols={1} scene="exchange" {...common} />
       </div>
 
       {/* Cities */}
-      <div className="mt-2">
-        <SpaceCluster group="city" cols={2} {...common} />
+      <div className="relative mt-2">
+        <SpaceCluster group="city" cols={2} scene="skyline" {...common} />
       </div>
 
       {/* Deep desert */}
-      <div className="mt-2">
-        <SpaceCluster group="desert" cols={3} {...common} />
+      <div className="relative mt-2">
+        <SpaceCluster group="desert" cols={3} scene="dunes" {...common} />
       </div>
     </div>
   );

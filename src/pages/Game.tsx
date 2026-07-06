@@ -8,6 +8,7 @@ import ImpHand from '../components/ImpHand';
 import ImpLog from '../components/ImpLog';
 import ImpMarket from '../components/ImpMarket';
 import ImpPlayerMat from '../components/ImpPlayerMat';
+import LeaderPortrait from '../components/imp/LeaderPortrait';
 import { useImpStore, useImpView } from '../lib/impStore';
 
 /** Main game screen: players/conflict left, board center, hand/market/log right. */
@@ -29,12 +30,25 @@ export default function Game() {
 
   if (!view || !full) {
     return (
-      <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div>Game not found on this device.</div>
-          <Link to="/" className="text-sand-300 underline">
-            Back to home
-          </Link>
+      <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-center justify-center p-6">
+        <div
+          className="relative overflow-hidden rounded-2xl px-8 py-10 max-w-sm text-center"
+          style={{
+            background: 'radial-gradient(120% 90% at 50% -20%, #3a2a1a, #17110b 72%)',
+            border: '1px solid #7b422277',
+            boxShadow: 'inset 0 0 60px -18px #000',
+          }}
+        >
+          <div className="tex-spice absolute inset-0 pointer-events-none opacity-60" aria-hidden />
+          <div className="relative space-y-3">
+            <div className="font-display text-2xl font-bold text-sand-300 tracking-wide">Lost to the sands</div>
+            <p className="text-sm text-sand-100/60">
+              No game with this id lives on this device. Saved games are stored locally in this browser.
+            </p>
+            <Link to="/" className="btn inline-block mt-1">
+              Back to home
+            </Link>
+          </div>
         </div>
       </main>
     );
@@ -44,12 +58,13 @@ export default function Game() {
     <main className="min-h-screen bg-dusk-900 text-sand-100 p-4">
       <div className="max-w-[1500px] mx-auto">
         <header className="flex items-baseline gap-4 mb-3">
-          <Link to="/" className="text-sand-300 font-semibold hover:underline">
+          <Link to="/" className="font-display text-lg font-bold text-sand-300 hover:underline tracking-wide">
             Imperium Engine
           </Link>
           <span className="text-xs text-sand-100/40">game {view.gameId}</span>
           {view.phase === 'finished' && view.winner && (
-            <span className="text-sm text-amber-300 font-semibold">
+            <span className="inline-flex items-center gap-1.5 text-sm text-amber-300 font-semibold">
+              <LeaderPortrait leaderId={view.players[view.winner].leaderId} size={22} />
               Game over — {view.players[view.winner].name} wins!
             </span>
           )}
@@ -83,8 +98,9 @@ export default function Game() {
                 ↷ Redo
               </button>
             </div>
-            <span className="text-xs text-sand-100/40">
-              viewing as{' '}
+            <span className="inline-flex items-center gap-1.5 text-xs text-sand-100/40">
+              viewing as
+              {viewingAs !== 'SPECTATOR' && <LeaderPortrait leaderId={view.players[viewingAs].leaderId} size={20} />}
               <span className="text-sand-200">
                 {viewingAs === 'SPECTATOR' ? 'spectator' : view.players[viewingAs].name}
               </span>

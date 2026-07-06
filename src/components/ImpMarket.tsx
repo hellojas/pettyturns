@@ -3,6 +3,7 @@ import type { ImpVisibleState, PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 import ImpCard from './ImpCard';
 import { Icon } from './imp/icons';
+import { CardBack } from './imp/tokens';
 
 /** The imperium row + reserve stacks; buyable during the viewer's reveal turn. */
 export default function ImpMarket({ view, viewingAs }: { view: ImpVisibleState; viewingAs: PlayerId | 'SPECTATOR' }) {
@@ -39,8 +40,11 @@ export default function ImpMarket({ view, viewingAs }: { view: ImpVisibleState; 
 
   return (
     <div className="space-y-2 text-xs">
-      <div className="text-sand-100/50 uppercase tracking-wide">
-        Imperium row <span className="normal-case">({view.imperiumDeckCount} in deck)</span>
+      <div className="flex items-center gap-2">
+        <CardBack count={view.imperiumDeckCount} width={26} title={`${view.imperiumDeckCount} cards left in the imperium deck`} />
+        <span className="text-sand-100/50 uppercase tracking-wide">
+          Imperium row <span className="normal-case">({view.imperiumDeckCount} in deck)</span>
+        </span>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {view.imperiumRow.map((cardId) => (

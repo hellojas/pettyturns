@@ -24,10 +24,17 @@ describe('leader passives', () => {
       expect(combatStrength(s, 'p1')).toBe(1);
     });
 
-    it('leaves a leader without the passive unchanged', () => {
+    it('leaves a leader without a combatStrength passive unchanged', () => {
+      let s = makeImp();
+      s = patch(s, 'p1', { leaderId: 'dukeLeto', inConflict: 3, swords: 0 });
+      expect(combatStrength(s, 'p1')).toBe(6);
+    });
+
+    it('adds Paul a small flat strength while committed', () => {
       let s = makeImp();
       s = patch(s, 'p1', { leaderId: 'paulAtreides', inConflict: 3, swords: 0 });
-      expect(combatStrength(s, 'p1')).toBe(6);
+      // base 2×3 = 6, plus Paul's +1 desert-fighter passive
+      expect(combatStrength(s, 'p1')).toBe(7);
     });
   });
 

@@ -267,13 +267,65 @@ owed) park a `flowResume` continuation via `settle`.
    structurally bad def. A card needing a player choice enqueues a pending
    decision — see the pending-decision section.)
 
-1. **Async multiplayer.** Store is hotseat + localStorage, now JOURNAL-backed
-   (`{ initial, journal, cursor }`). Seam: persist that journal server-side
-   (Supabase); clients append validated actions and receive their
-   `getVisibleImperiumState` view; the server reconciles/rebuilds by replay
-   (`engine/replay.ts`). Engine needs no changes. NOTE: needs the user to set up
-   Supabase (external), so it can't be fully verified in this sandbox — scope a
-   local mock adapter first.
+1. **Async multiplayer — PLAYABLE.** Wired end-to-end and verified in the
+   browser (create → reveal → resolve decision → end round → turn hands off →
+   opponent seat plays; redaction, turn-gating, lobby all working).
+   - UI: `/async` lobby (`pages/AsyncLobby.tsx`), `/async/new`
+     (`pages/AsyncNewGame.tsx`, human seats only), `/async/game/:gameId`
+     (`pages/AsyncGame.tsx` — seat picker when no `?seat=`, else the full board
+     reused from hotseat, seat-scoped and turn-gated). Home links to it.
+   - Store (`lib/impStore.ts`): a `mode: 'hotseat' | 'async'` flag. Async adds
+     `createAsyncGame` / `joinAsyncGame` / `refreshAsync`; `dispatch` routes
+     through `activeTransport.submit` (authoritative), adopts the returned
+     journal via `since()`, handles `conflict` by refresh-and-retry-surface,
+     pins `viewingAs`/`localSeat`, disables undo/redo, and polls (1.5s) plus a
+     `storage` listener for opponents' moves. Transport is swappable via
+     `setImpTransport` (tests inject an in-memory mock; a real backend swaps
+     here). Tests: `asyncStore.test.ts` (6).
+   - CROSS-DEVICE BACKEND: Firebase/Firestore is now implemented
+     (`net/firestoreTransport.ts` + `net/firebaseConfig.ts`), wired from
+     `main.tsx` (lazy-loaded so Firebase only bundles when async is enabled;
+     `setImpTransport(new FirestoreTransport())`). One doc per game holds the
+     append-only journal (as JSON strings + denormalised summary); `submit` runs
+     `evaluateSubmit` inside a Firestore `runTransaction` (shared with the mock
+     via `net/serverLogic.ts`); `subscribe` is a live `onSnapshot`. Anonymous
+     auth + `firestore.rules` (append-only, frozen seed) gate access. Falls back
+     to the local mock if Firebase is unreachable or `VITE_USE_FIREBASE=false`.
+     Setup steps (enable Firestore + Anonymous auth + publish rules) are in
+     `FIREBASE_SETUP.md`. NOT verifiable in the sandbox (needs the live project);
+     the local-mock path is browser-verified.
+   - REMAINING: enable Firestore + Anonymous auth in the Firebase console and
+     publish `firestore.rules` (owner action). Optional: move `evaluateSubmit`
+     into a Cloud Function for server-enforced move legality (interface
+     unchanged); hide action controls (not just gate pointer events) off-turn;
+     turn-change push notifications.
+
+   The transport seam lives under `src/imperium/net/` (tests:
+   `netTransport.test.ts`), engine untouched:
+   - `net/types.ts` — the client contract `ImpGameTransport`
+     (`create`/`snapshot`/`submit`/`since`/`subscribe`/`list`/`remove`, all
+     async) plus the server-side `JournalStore` persistence contract and the
+     `StoredImpGame` (schema 3: `{ initial, journal, botSeats }`, append-only
+     log) / `GameSnapshot` / `SubmitResult` shapes.
+   - `net/journalStore.ts` — `InMemoryJournalStore` (mock/tests) and
+     `LocalStorageJournalStore` (browser). Both derive listings by replay, never
+     from a stale snapshot.
+   - `net/localTransport.ts` — `LocalMockTransport`: the in-process
+     AUTHORITATIVE server. Owns the journal; validates every submit with the
+     same `impValidate`/`impApply`; redacts via `getVisibleImperiumState`;
+     enforces seat ownership + turn; optimistic concurrency (`expectedCursor` →
+     `conflict`, client resyncs via `since()` and retries — reconcile by
+     replay); notifies `subscribe` listeners on each append. Clock + id injected
+     for deterministic tests.
+
+   REMAINING: (a) point `src/lib/impStore.ts` at an `ImpGameTransport` instead
+   of its inline localStorage `persist`/`loadRecord` (keep hotseat working by
+   defaulting to `LocalMockTransport` + `LocalStorageJournalStore`); the store's
+   `cursor`/undo stays a client concept over the authoritative append-only log.
+   (b) Implement a real `ImpGameTransport` over Supabase (external — needs the
+   user to provision it; the local mock is the drop-in stand-in until then).
+   (c) A lobby/turn-notification UI. The interface is identical for mock and
+   real, so (a)+(c) can land and be verified against the mock before (b).
 2. **`onAgentPlaced` choice-driven passives.** The pending-decision plumbing now
    supports this (a placement passive can enqueue a decision); no leader in the
    current config needs it yet, but the hook is ready.

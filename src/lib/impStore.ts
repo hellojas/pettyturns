@@ -4,6 +4,8 @@ import { impApply, impAllowedActions, impValidate } from '../imperium/engine/eng
 import { chooseBotAction } from '../imperium/engine/bot';
 import { stateAfter } from '../imperium/engine/replay';
 import { getVisibleImperiumState } from '../imperium/engine/visibility';
+import { LocalMockTransport, LocalStorageJournalStore } from '../imperium/net';
+import type { ImpGameSummary, ImpGameTransport } from '../imperium/net';
 import type {
   CardId,
   ImpAction,
@@ -29,11 +31,43 @@ import type {
 const INDEX_KEY = 'imperium:games';
 const gameKey = (gameId: string) => `imperium:game:${gameId}`;
 
+/**
+ * Async multiplayer runs against an authoritative transport. In this build the
+ * transport is the in-process `LocalMockTransport` backed by localStorage, so
+ * "async" games are authoritative + seat-scoped on a single device (open two
+ * tabs, or switch seats, to play both sides). A networked backend implementing
+ * `ImpGameTransport` drops in here with no other change — the store only ever
+ * talks to the interface.
+ */
+let activeTransport: ImpGameTransport = new LocalMockTransport({
+  store: new LocalStorageJournalStore(),
+});
+
+/** The transport async games run against (localStorage-backed mock by default). */
+export const getImpTransport = (): ImpGameTransport => activeTransport;
+/** Swap the transport (tests inject an in-memory mock; a real backend swaps here). */
+export const setImpTransport = (t: ImpGameTransport): void => {
+  activeTransport = t;
+};
+
+export async function listAsyncGames(): Promise<ImpGameSummary[]> {
+  return activeTransport.list();
+}
+export async function deleteAsyncGame(gameId: string): Promise<void> {
+  return activeTransport.remove(gameId);
+}
+/** Stop the background poll loop (call when leaving an async game screen). */
+export function stopAsyncPolling(): void {
+  stopPolling();
+}
+
 export interface ImpSavedMeta {
   gameId: string;
   createdAt: string;
   updatedAt: string;
   players: string[];
+  /** Leader id per seat, aligned with `players` (added later; may be absent on old saves). */
+  leaders?: string[];
   round: number;
   phase: string;
 }
@@ -69,7 +103,8 @@ function persist(
     gameId,
     createdAt: live.createdAt,
     updatedAt: new Date().toISOString(),
-    players: Object.values(live.players).map((p) => p.name),
+    players: live.playerOrder.map((pid) => live.players[pid].name),
+    leaders: live.playerOrder.map((pid) => live.players[pid].leaderId),
     round: live.round,
     phase: live.phase,
   };
@@ -190,9 +225,21 @@ interface ImpStore {
   viewingAs: PlayerId | 'SPECTATOR';
   pending: PendingPlay | null;
   lastError: string | null;
+  /** 'hotseat' = local pass-and-play (undo/redo, bots); 'async' = transport-backed. */
+  mode: 'hotseat' | 'async';
+  /** In async mode, the one seat this device controls (null = hotseat/spectator). */
+  localSeat: PlayerId | null;
+  /** True while an async submit/refresh is in flight. */
+  syncing: boolean;
 
   newGame(seats: Array<{ name: string; leaderId: LeaderId; isBot?: boolean }>, seed?: number): string;
   loadGame(gameId: string): boolean;
+  /** Create an authoritative async game (human seats only) and seat this device first. */
+  createAsyncGame(seats: Array<{ name: string; leaderId: LeaderId }>, seed?: number): Promise<string>;
+  /** Join an existing async game as `seat`; starts polling for opponents' moves. */
+  joinAsyncGame(gameId: string, seat: PlayerId): Promise<boolean>;
+  /** Pull any authoritative actions this client is missing and rebuild state. */
+  refreshAsync(): Promise<void>;
   dispatch(action: ImpDispatchable): void;
   /** Advance every consecutive bot move until a human is up or the game ends. */
   runBots(): void;
@@ -227,7 +274,7 @@ function cancelBots(): void {
 /** If auto-run is on and a bot is up, play one move after a pause, then chain. */
 function scheduleBots(): void {
   const st = useImpStore.getState();
-  if (!st.autoRun || !st.state) return;
+  if (st.mode === 'async' || !st.autoRun || !st.state) return;
   const actor = currentActor(st.state);
   if (!actor || !st.botSeats.includes(actor)) return;
   cancelBots();
@@ -237,6 +284,45 @@ function scheduleBots(): void {
     botTimer = null;
     if (useImpStore.getState().stepBot()) scheduleBots();
   }, BOT_STEP_MS);
+}
+
+/**
+ * Async polling: while an async game is open, periodically pull authoritative
+ * actions so opponents' moves appear without a manual refresh. A generation
+ * token cancels a stale loop when the game changes or a hotseat game loads. A
+ * `storage` listener makes cross-tab updates near-instant (same-device play).
+ */
+const POLL_MS = 1500;
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let pollGeneration = 0;
+let storageBound = false;
+function stopPolling(): void {
+  pollGeneration++;
+  if (pollTimer) {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+}
+function onStorage(): void {
+  const st = useImpStore.getState();
+  if (st.mode === 'async' && st.gameId) void st.refreshAsync();
+}
+function startPolling(): void {
+  stopPolling();
+  if (typeof window !== 'undefined' && !storageBound) {
+    window.addEventListener('storage', onStorage);
+    storageBound = true;
+  }
+  const gen = pollGeneration;
+  const tick = () => {
+    if (gen !== pollGeneration) return;
+    const st = useImpStore.getState();
+    if (st.mode !== 'async' || !st.gameId) return;
+    void st.refreshAsync().finally(() => {
+      if (gen === pollGeneration) pollTimer = setTimeout(tick, POLL_MS);
+    });
+  };
+  pollTimer = setTimeout(tick, POLL_MS);
 }
 
 export const useImpStore = create<ImpStore>((set, get) => ({
@@ -250,8 +336,12 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   viewingAs: 'SPECTATOR',
   pending: null,
   lastError: null,
+  mode: 'hotseat',
+  localSeat: null,
+  syncing: false,
 
   newGame(seatInputs, seed) {
+    stopPolling(); // leaving any async game
     const gameId = `i${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
     const seats: ImpSeat[] = seatInputs.map((s, i) => ({
       playerId: `p${i + 1}`,
@@ -280,12 +370,16 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       viewingAs: firstHuman,
       pending: null,
       lastError: null,
+      mode: 'hotseat',
+      localSeat: null,
+      syncing: false,
     });
     scheduleBots(); // e.g. a bot is first player
     return gameId;
   },
 
   loadGame(gameId) {
+    stopPolling();
     const rec = loadRecord(gameId);
     if (!rec) return false;
     const state = stateAfter(rec.initial, rec.journal, rec.cursor);
@@ -301,14 +395,115 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       viewingAs: firstHuman,
       pending: null,
       lastError: null,
+      mode: 'hotseat',
+      localSeat: null,
+      syncing: false,
     });
     scheduleBots(); // resume auto-play if a bot is up on load
     return true;
   },
 
+  async createAsyncGame(seatInputs, seed) {
+    stopPolling();
+    const seats = seatInputs.map((s, i) => ({
+      playerId: `p${i + 1}`,
+      name: s.name || `Player ${i + 1}`,
+      leaderId: s.leaderId,
+    }));
+    let gameId: string;
+    try {
+      ({ gameId } = await activeTransport.create({ seats, seed, botSeats: [] }));
+    } catch (err) {
+      const message = `Could not reach the game server: ${err instanceof Error ? err.message : String(err)}`;
+      set({ lastError: message });
+      throw new Error(message);
+    }
+    await get().joinAsyncGame(gameId, 'p1');
+    return gameId;
+  },
+
+  async joinAsyncGame(gameId, seat) {
+    stopPolling();
+    let co;
+    try {
+      co = await activeTransport.checkout(gameId);
+    } catch (err) {
+      set({ lastError: `Could not reach the game server: ${err instanceof Error ? err.message : String(err)}` });
+      return false;
+    }
+    if (!co || !co.initial.players[seat]) {
+      set({ lastError: `Cannot join ${gameId} as ${seat}.` });
+      return false;
+    }
+    const state = stateAfter(co.initial, co.journal, co.journal.length);
+    set({
+      gameId,
+      initial: co.initial,
+      journal: co.journal,
+      cursor: co.journal.length,
+      state,
+      botSeats: [],
+      viewingAs: seat,
+      localSeat: seat,
+      mode: 'async',
+      pending: null,
+      lastError: null,
+      syncing: false,
+    });
+    startPolling();
+    return true;
+  },
+
+  async refreshAsync() {
+    const { gameId, initial, journal, mode } = get();
+    if (mode !== 'async' || !gameId || !initial) return;
+    let delta;
+    try {
+      delta = await activeTransport.since(gameId, journal.length);
+    } catch {
+      return; // transient fetch error; the next poll retries
+    }
+    if (!delta || delta.actions.length === 0) return;
+    const merged = [...journal, ...delta.actions];
+    const state = stateAfter(initial, merged, merged.length);
+    set({ journal: merged, cursor: merged.length, state });
+  },
+
   dispatch(action) {
-    const { state, initial, journal, cursor, gameId, botSeats } = get();
+    const { state, initial, journal, cursor, gameId, botSeats, mode, localSeat } = get();
     if (!state || !initial || !gameId) return;
+
+    if (mode === 'async') {
+      // Authoritative path: submit to the transport; adopt its journal on success.
+      if (!localSeat) {
+        set({ lastError: 'Spectators cannot act.' });
+        return;
+      }
+      set({ syncing: true, lastError: null });
+      void (async () => {
+        try {
+          const res = await activeTransport.submit({
+            gameId,
+            viewerId: localSeat,
+            action: { ...action, playerId: localSeat } as Omit<ImpAction, 'at'>,
+            expectedCursor: journal.length,
+          });
+          if (res.ok) {
+            await get().refreshAsync(); // pull the just-appended action(s) authoritatively
+            set({ pending: null, lastError: null, syncing: false });
+          } else if (res.code === 'conflict') {
+            await get().refreshAsync();
+            set({ syncing: false, lastError: 'The game moved on — refreshed to the latest state.' });
+          } else {
+            set({ syncing: false, lastError: res.message });
+          }
+        } catch (err) {
+          set({ syncing: false, lastError: err instanceof Error ? err.message : String(err) });
+        }
+      })();
+      return;
+    }
+
     const stamped = { ...action, at: new Date().toISOString() } as ImpAction;
     const verdict = impValidate(state, stamped);
     if (!verdict.ok) {
@@ -377,6 +572,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   },
 
   undo() {
+    if (get().mode === 'async') return; // authoritative log is append-only
     cancelBots(); // stepping back must not trigger auto-play
     const { initial, journal, cursor, gameId, viewingAs, botSeats } = get();
     if (!initial || !gameId || cursor <= 0) return;
@@ -388,6 +584,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   },
 
   redo() {
+    if (get().mode === 'async') return; // authoritative log is append-only
     cancelBots();
     const { initial, journal, cursor, gameId, botSeats } = get();
     if (!initial || !gameId || cursor >= journal.length) return;
@@ -418,6 +615,13 @@ export function useImpView(): {
   botToMove: boolean;
   botSeats: PlayerId[];
   autoRun: boolean;
+  mode: 'hotseat' | 'async';
+  localSeat: PlayerId | null;
+  syncing: boolean;
+  /** async: whose move the game is waiting on (decision owner else the turn). */
+  actor: PlayerId | null;
+  /** async: true when this device's seat is the one to move. */
+  yourTurn: boolean;
 } {
   const state = useImpStore((s) => s.state);
   const viewingAs = useImpStore((s) => s.viewingAs);
@@ -425,6 +629,9 @@ export function useImpView(): {
   const journalLen = useImpStore((s) => s.journal.length);
   const botSeats = useImpStore((s) => s.botSeats);
   const autoRun = useImpStore((s) => s.autoRun);
+  const mode = useImpStore((s) => s.mode);
+  const localSeat = useImpStore((s) => s.localSeat);
+  const syncing = useImpStore((s) => s.syncing);
   if (!state)
     return {
       full: null,
@@ -436,20 +643,31 @@ export function useImpView(): {
       botToMove: false,
       botSeats,
       autoRun,
+      mode,
+      localSeat,
+      syncing,
+      actor: null,
+      yourTurn: false,
     };
   const view = getVisibleImperiumState(state, viewingAs);
   const allowed = viewingAs === 'SPECTATOR' ? [] : impAllowedActions(state, viewingAs);
   const actor = currentActor(state);
   const botToMove = actor !== null && botSeats.includes(actor);
+  const hotseat = mode === 'hotseat';
   return {
     full: state,
     view,
     allowed,
     viewingAs,
-    canUndo: cursor > 0,
-    canRedo: cursor < journalLen,
+    canUndo: hotseat && cursor > 0,
+    canRedo: hotseat && cursor < journalLen,
     botToMove,
     botSeats,
     autoRun,
+    mode,
+    localSeat,
+    syncing,
+    actor,
+    yourTurn: mode === 'async' && actor !== null && actor === localSeat,
   };
 }
