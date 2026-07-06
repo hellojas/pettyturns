@@ -47,9 +47,15 @@ function factionTrackTooltip(faction: ImpFactionId, current: number, hasAlliance
 
 /** Original-wording summary of a leader's signet-ring ability. */
 function describeSignet(leader: (typeof IMP_LEADERS)[string]): string {
+  if (leader.signetNote) return `Signet ring: ${leader.signetNote}`;
   const gains = describeGains(leader.signetGains);
-  const cost = leader.signetCost && Object.keys(leader.signetCost).length > 0;
-  return `Signet ring: ${gains || 'special effect'}${cost ? ' (has a cost)' : ''}`;
+  const payParts: string[] = [];
+  const c = leader.signetCost ?? {};
+  if (c.solari) payParts.push(`${c.solari} solari`);
+  if (c.spice) payParts.push(`${c.spice} spice`);
+  if (c.water) payParts.push(`${c.water} water`);
+  const pay = payParts.length ? ` (pay ${payParts.join(', ')})` : '';
+  return `Signet ring: ${gains || 'special effect'}${pay}`;
 }
 
 /** Hover text for a leader: its signet ability, passive summaries, and any note-only ability. */

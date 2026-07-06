@@ -237,6 +237,12 @@ export interface ImpLeaderDef {
   signetGains: Gains;
   signetCost?: Costs;
   /**
+   * Original-wording note for a signet ability the Gains DSL can't express
+   * (e.g. a conditional influence gain or Imperium-Row manipulation). When set,
+   * the UI shows this text; such signets are not auto-applied by the engine.
+   */
+  signetNote?: string;
+  /**
    * Machine-enforced passive abilities, consumed at named engine hooks. Every
    * value is VERIFY; original-wording summaries only.
    */
