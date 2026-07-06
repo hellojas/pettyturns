@@ -17,16 +17,18 @@ import type { ImpLeaderDef, LeaderId } from '../types';
  * `params` (and add/remove passives) to match your copy — the engine reads
  * only this config.
  *
- * PORTRAITS: each leader may carry an optional `portrait` (a URL or a path under
- * `/public`, e.g. `portrait: '/portraits/paul.jpg'`). If you own the game and
- * want the real character faces, drop your own image files in and set the paths
- * here — the UI will render them. With no `portrait`, the UI draws an original
- * generated cameo. No copyrighted art ships in this repo.
+ * PORTRAITS: each leader carries a `portrait` pointing at an original generated
+ * illustration under `/public/portraits` (regenerate with
+ * `node tools/gen-portraits.mjs`). These are stylized heraldic interpretations,
+ * not copyrighted character art. To use your own faces, replace the file or
+ * point `portrait` at any image under `/public`; remove it to fall back to the
+ * code-drawn cameo. See `public/portraits/README.md`.
  */
 export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   paulAtreides: {
     id: 'paulAtreides',
     name: 'Paul Atreides',
+    portrait: '/portraits/paulAtreides.svg',
     signetGains: { drawCards: 1 },
     passives: [
       {
@@ -42,6 +44,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   dukeLeto: {
     id: 'dukeLeto',
     name: 'Duke Leto Atreides',
+    portrait: '/portraits/dukeLeto.svg',
     signetGains: { solari: 2 },
     passives: [
       {
@@ -55,6 +58,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   baronHarkonnen: {
     id: 'baronHarkonnen',
     name: 'Baron Vladimir Harkonnen',
+    portrait: '/portraits/baronHarkonnen.svg',
     signetGains: { intrigueCards: 1 },
     signetCost: {},
     passives: [
@@ -69,6 +73,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   glossuRabban: {
     id: 'glossuRabban',
     name: 'Glossu "The Beast" Rabban',
+    portrait: '/portraits/glossuRabban.svg',
     signetGains: { troops: 1 },
     passives: [
       {
@@ -82,6 +87,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   arianaThorvald: {
     id: 'arianaThorvald',
     name: 'Countess Ariana Thorvald',
+    portrait: '/portraits/arianaThorvald.svg',
     signetGains: { spice: 1 },
     passives: [
       {
@@ -95,6 +101,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   memnonThorvald: {
     id: 'memnonThorvald',
     name: 'Earl Memnon Thorvald',
+    portrait: '/portraits/memnonThorvald.svg',
     signetGains: { troops: 1 },
     passives: [
       {
@@ -108,6 +115,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   helenaRichese: {
     id: 'helenaRichese',
     name: 'Helena Richese',
+    portrait: '/portraits/helenaRichese.svg',
     signetGains: { solari: 1, drawCards: 1 },
     passives: [
       {
@@ -121,6 +129,7 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
   ilbanRichese: {
     id: 'ilbanRichese',
     name: 'Count Ilban Richese',
+    portrait: '/portraits/ilbanRichese.svg',
     signetGains: { solari: 1 },
     passives: [
       {
