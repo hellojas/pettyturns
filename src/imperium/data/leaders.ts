@@ -39,6 +39,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         // VERIFY the trigger/timing against the leader sheet you own.
         params: { deckPeek: true },
       },
+      {
+        id: 'paul-desert-fighter',
+        hook: 'combatStrength',
+        summary: 'A warrior in his own right: adds a little strength to any conflict he joins.',
+        params: { strength: 1 }, // VERIFY amount / conditions
+      },
     ],
   },
   dukeLeto: {
@@ -52,6 +58,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         hook: 'onReveal',
         summary: 'Turns his standing into coin: gains solari each time he takes his reveal turn.',
         params: { gains: { solari: 1 } }, // VERIFY amount
+      },
+      {
+        id: 'leto-statecraft',
+        hook: 'onAgentPlaced',
+        summary: 'A master of statecraft: gains coin when sending an agent to a Landsraad space.',
+        params: { group: 'landsraad', gains: { solari: 1 } }, // VERIFY amount
       },
     ],
   },
@@ -108,6 +120,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         summary: 'At home in the deep desert: gains extra spice when sending an agent into the sands.',
         params: { group: 'desert', gains: { spice: 1 } }, // VERIFY amount
       },
+      {
+        id: 'ariana-spice-stipend',
+        hook: 'onRoundStart',
+        summary: 'The desert provides: collects a measure of spice at the start of each round.',
+        params: { gains: { spice: 1 } }, // VERIFY amount
+      },
     ],
   },
   memnonThorvald: {
@@ -121,6 +139,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         hook: 'onAgentPlaced',
         summary: 'Works the noble houses: gains coin when sending an agent to a Landsraad space.',
         params: { group: 'landsraad', gains: { solari: 1 } }, // VERIFY amount
+      },
+      {
+        id: 'memnon-persuasive-presence',
+        hook: 'onReveal',
+        summary: 'A persuasive presence at court: adds a little influence on his reveal turn.',
+        params: { gains: { persuasion: 1 } }, // VERIFY amount
       },
     ],
   },
@@ -155,6 +179,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         hook: 'onRoundStart',
         summary: 'Steady manufacturing revenue: collects coin at the start of each round.',
         params: { gains: { solari: 1 } }, // VERIFY amount
+      },
+      {
+        id: 'ilban-guild-contracts',
+        hook: 'onAgentPlaced',
+        summary: 'Lucrative Guild contracts: gains coin when sending an agent to a CHOAM space.',
+        params: { group: 'choam', gains: { solari: 1 } }, // VERIFY amount
       },
     ],
   },
