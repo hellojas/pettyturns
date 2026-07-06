@@ -76,6 +76,58 @@ function persist(
   localStorage.setItem(INDEX_KEY, JSON.stringify([meta, ...readIndex().filter((m) => m.gameId !== gameId)]));
 }
 
+/**
+ * Backfill state collections added to the schema after a save was written, so
+ * games persisted by an older build still load instead of crashing. A save made
+ * before the pending-decision system lacks `pendingDecisions`; the engine reads
+ * `state.pendingDecisions[0]` while replaying the journal (and
+ * `getVisibleImperiumState` maps over it on render), so a missing value throws
+ * "Cannot read properties of undefined". Present values always win — only
+ * genuinely-missing fields get a neutral default, so complete saves are a no-op.
+ *
+ * Normalizing `initial` is sufficient: the journal is replayed from it via the
+ * pure reducer, whose output always carries these fields.
+ */
+export function normalizeImpState(state: ImpGameState): ImpGameState {
+  const players = Object.fromEntries(
+    Object.entries(state.players).map(([pid, p]) => [
+      pid,
+      { ...p, controls: p.controls ?? [], vpLedger: p.vpLedger ?? [] },
+    ]),
+  ) as ImpGameState['players'];
+  const hidden = Object.fromEntries(
+    Object.entries(state.hidden).map(([pid, h]) => [
+      pid,
+      {
+        ...h,
+        deck: h.deck ?? [],
+        hand: h.hand ?? [],
+        discard: h.discard ?? [],
+        inPlay: h.inPlay ?? [],
+        revealedCards: h.revealedCards ?? [],
+        trashed: h.trashed ?? [],
+        intrigue: h.intrigue ?? [],
+      },
+    ]),
+  ) as ImpGameState['hidden'];
+  return {
+    ...state,
+    players,
+    hidden,
+    imperiumRow: state.imperiumRow ?? [],
+    intrigueDiscard: state.intrigueDiscard ?? [],
+    combatPassed: state.combatPassed ?? [],
+    occupied: state.occupied ?? {},
+    makerBonus: state.makerBonus ?? {},
+    alliances: state.alliances ?? {},
+    controlledBy: state.controlledBy ?? {},
+    pendingDecisions: state.pendingDecisions ?? [],
+    flowResume: state.flowResume ?? null,
+    decisionSeq: state.decisionSeq ?? 0,
+    finalStandings: state.finalStandings ?? null,
+  };
+}
+
 /** Load a persisted game, tolerating pre-journal (schema 1, raw-state) saves. */
 function loadRecord(
   gameId: string,
@@ -87,7 +139,7 @@ function loadRecord(
     if (parsed && parsed.schema === 2 && parsed.initial) {
       const rec = parsed as PersistedGame;
       return {
-        initial: rec.initial,
+        initial: normalizeImpState(rec.initial),
         journal: rec.journal ?? [],
         cursor: rec.cursor ?? (rec.journal?.length ?? 0),
         botSeats: rec.botSeats ?? [],
@@ -95,7 +147,7 @@ function loadRecord(
     }
     // legacy: the whole blob is a raw game state → load with no undo history
     if (parsed && parsed.players && parsed.playerOrder) {
-      return { initial: parsed as ImpGameState, journal: [], cursor: 0, botSeats: [] };
+      return { initial: normalizeImpState(parsed as ImpGameState), journal: [], cursor: 0, botSeats: [] };
     }
     return null;
   } catch {
