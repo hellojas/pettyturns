@@ -1,19 +1,10 @@
 import { IMP_CONFLICT_DEFS } from '../imperium/data/conflicts';
 import { combatStrength } from '../imperium/engine/engine';
-import type { ImpVisibleState, PlayerId } from '../imperium/types';
+import type { Gains, ImpVisibleState, PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
-
-function gainsText(g: Record<string, unknown>): string {
-  const parts: string[] = [];
-  if (g.vp) parts.push(`${g.vp} VP`);
-  if (g.spice) parts.push(`${g.spice}◉`);
-  if (g.solari) parts.push(`${g.solari}$`);
-  if (g.water) parts.push(`${g.water}💧`);
-  if (g.intrigueCards) parts.push(`${g.intrigueCards} intrigue`);
-  if (g.anyInfluence) parts.push(`${g.anyInfluence} influence`);
-  if (g.control) parts.push(`control ${g.control}`);
-  return parts.join(', ') || '—';
-}
+import { Icon } from './imp/icons';
+import { gainsChips } from './imp/visuals';
+import { ChipRow } from './imp/Chips';
 
 /** Current conflict card, committed strength, and the combat window controls. */
 export default function ImpConflict({ view, viewingAs }: { view: ImpVisibleState; viewingAs: PlayerId | 'SPECTATOR' }) {
@@ -33,9 +24,9 @@ export default function ImpConflict({ view, viewingAs }: { view: ImpVisibleState
       </div>
       <div className="space-y-0.5">
         {conflict.rewards.map((r) => (
-          <div key={r.place} className="flex gap-2">
+          <div key={r.place} className="flex gap-2 items-center">
             <span className="text-sand-300 w-8">{r.place === 1 ? '1st' : r.place === 2 ? '2nd' : '3rd'}</span>
-            <span className="text-sand-100/70">{gainsText(r.gains as Record<string, unknown>)}</span>
+            <ChipRow chips={gainsChips(r.gains as Gains)} empty={<span className="text-sand-100/35">—</span>} />
           </div>
         ))}
       </div>
@@ -43,11 +34,17 @@ export default function ImpConflict({ view, viewingAs }: { view: ImpVisibleState
         <div className="space-y-0.5">
           <div className="text-sand-100/50 uppercase tracking-wide">Committed</div>
           {combatants.map((pid) => (
-            <div key={pid} className="flex gap-2">
+            <div key={pid} className="flex gap-2 items-center">
               <span className="text-sand-200">{view.players[pid].name}</span>
-              <span className="text-sand-100/60">
-                {view.players[pid].inConflict} troop(s)
-                {full ? ` — strength ${combatStrength(full, pid)}` : ''}
+              <span className="inline-flex items-center gap-1 text-sand-100/60">
+                <Icon name="troops" size={12} />
+                {view.players[pid].inConflict}
+                {full ? (
+                  <span className="inline-flex items-center gap-1 ml-1">
+                    <Icon name="sword" size={12} />
+                    {combatStrength(full, pid)}
+                  </span>
+                ) : null}
               </span>
             </div>
           ))}
