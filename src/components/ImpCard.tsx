@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ImpCardDef } from '../imperium/types';
 import { Icon } from './imp/icons';
+import { CardArt } from './imp/cardArt';
 import { cardAccent, costChips, gainsChips, type Chip } from './imp/visuals';
 
 /** A row of effect chips (icon + amount). Empty renders nothing. */
@@ -77,38 +78,49 @@ export default function ImpCard({
         }}
       >
         {/* Accent spine */}
-        <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent }} />
+        <span className="absolute inset-y-0 left-0 w-1 z-10" style={{ background: accent }} />
 
-        {/* Header: icons + name + cost */}
-        <div className="pl-2.5 pr-1.5 pt-1.5 pb-1">
-          <div className="flex items-start gap-1">
-            <div className="flex items-center gap-0.5 flex-wrap">
-              {def.icons.length === 0 ? (
-                <span className="text-[9px] uppercase tracking-wider text-sand-100/40">reveal</span>
-              ) : (
-                def.icons.map((ic, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center justify-center rounded-full"
-                    style={{ background: '#0000003d', padding: 2 }}
-                  >
-                    <Icon name={ic} size={13} title={ic} />
-                  </span>
-                ))
-              )}
-            </div>
-            {showCost && def.cost > 0 && (
-              <span
-                className="ml-auto inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold shrink-0"
-                style={{ background: '#0000006b', color: '#e3bd78' }}
-                title={`costs ${def.cost} persuasion`}
-              >
-                <Icon name="persuasion" size={12} />
-                {def.cost}
+        {/* Illustrated banner: art with icons + cost + name overlaid */}
+        <div className="relative">
+          <CardArt def={def} accent={accent} height={52} className="opacity-95 group-hover:opacity-100 transition-opacity" />
+          {/* legibility scrim under the title */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'linear-gradient(180deg, #0d0906aa 0%, transparent 34%, transparent 46%, #14100bee 100%)' }}
+          />
+          {/* Agent icons, top-left */}
+          <div className="absolute top-1 left-1.5 flex items-center gap-0.5 flex-wrap max-w-[70%]">
+            {def.icons.length === 0 ? (
+              <span className="text-[8px] uppercase tracking-wider text-sand-100/75 bg-black/45 rounded px-1 py-0.5">
+                reveal
               </span>
+            ) : (
+              def.icons.map((ic, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center justify-center rounded-full ring-1 ring-black/50"
+                  style={{ background: '#00000077', padding: 2 }}
+                >
+                  <Icon name={ic} size={12} title={ic} />
+                </span>
+              ))
             )}
           </div>
-          <div className="mt-1 font-semibold text-[13px] leading-tight text-sand-100">{def.name}</div>
+          {/* Persuasion cost, top-right */}
+          {showCost && def.cost > 0 && (
+            <span
+              className="absolute top-1 right-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold shrink-0 ring-1 ring-black/40"
+              style={{ background: '#000000aa', color: '#f2d78a' }}
+              title={`costs ${def.cost} persuasion`}
+            >
+              <Icon name="persuasion" size={12} />
+              {def.cost}
+            </span>
+          )}
+          {/* Name, overlaid at the bottom of the art */}
+          <div className="absolute bottom-0.5 left-2.5 right-1.5 font-semibold text-[12.5px] leading-tight text-sand-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+            {def.name}
+          </div>
         </div>
 
         {/* Agent effect */}

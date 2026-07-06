@@ -12,6 +12,7 @@ import type {
 import { IMP_FACTIONS } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 import { Icon, type IconName } from './imp/icons';
+import { SpaceArt } from './imp/cardArt';
 import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
@@ -106,43 +107,51 @@ function SpaceTile({
         opacity: occupant && !legal && !selected ? 0.72 : 1,
       }}
     >
-      <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent }} />
-      <div className="flex items-center gap-1 pl-1">
-        <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
-        {space.combat && <Icon name="sword" size={12} title="opens the conflict" />}
-        {space.maker && bonus > 0 && (
-          <span className="inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
-            <Icon name="spice" size={12} />
-            {bonus}
-          </span>
-        )}
-        {occupant && (
-          <span className="ml-auto">
-            <AgentDisc color={PLAYER_COLORS[occupantIdx % 4]} title={`agent: ${view.players[occupant].name}`} />
-          </span>
-        )}
-      </div>
-      <div className="pl-1 mt-0.5 flex items-center gap-2 flex-wrap">
-        {costs.length > 0 && (
-          <span className="inline-flex items-center gap-1">
-            <ChipRow chips={costs} tone="cost" />
-          </span>
-        )}
-        <ChipRow chips={gains} />
-        {space.influenceGain && (
-          <span className="inline-flex items-center gap-0.5" title={`+1 ${GROUP_META[space.influenceGain].label} influence`}>
-            <Icon name={space.influenceGain as IconName} size={12} />
-            <span className="text-[10px] font-semibold">+1</span>
-          </span>
-        )}
-        {special && <span className="text-[10px] text-sand-300/80">{special}</span>}
-      </div>
-      {controller && (
-        <div className="pl-1 mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
-          <AgentDisc color={PLAYER_COLORS[controllerIdx % 4]} />
-          controlled by {view.players[controller].name}
+      <span className="absolute inset-y-0 left-0 w-1 z-10" style={{ background: accent }} />
+      <div className="flex gap-1.5 pl-1">
+        {/* Space illustration */}
+        <div className="shrink-0 self-start mt-0.5 rounded-md overflow-hidden ring-1 ring-black/40">
+          <SpaceArt space={space} accent={accent} size={38} />
         </div>
-      )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
+            {space.combat && <Icon name="sword" size={12} title="opens the conflict" />}
+            {space.maker && bonus > 0 && (
+              <span className="inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
+                <Icon name="spice" size={12} />
+                {bonus}
+              </span>
+            )}
+            {occupant && (
+              <span className="ml-auto">
+                <AgentDisc color={PLAYER_COLORS[occupantIdx % 4]} title={`agent: ${view.players[occupant].name}`} />
+              </span>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+            {costs.length > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <ChipRow chips={costs} tone="cost" />
+              </span>
+            )}
+            <ChipRow chips={gains} />
+            {space.influenceGain && (
+              <span className="inline-flex items-center gap-0.5" title={`+1 ${GROUP_META[space.influenceGain].label} influence`}>
+                <Icon name={space.influenceGain as IconName} size={12} />
+                <span className="text-[10px] font-semibold">+1</span>
+              </span>
+            )}
+            {special && <span className="text-[10px] text-sand-300/80">{special}</span>}
+          </div>
+          {controller && (
+            <div className="mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
+              <AgentDisc color={PLAYER_COLORS[controllerIdx % 4]} />
+              controlled by {view.players[controller].name}
+            </div>
+          )}
+        </div>
+      </div>
     </button>
   );
 }
@@ -215,7 +224,17 @@ function FactionRegion({
   return (
     <div className="rounded-lg p-1.5 flex flex-col gap-1.5" style={{ background: `${meta.accent}12`, border: `1px solid ${meta.accent}44` }}>
       <div className="flex items-center gap-1.5 px-0.5">
-        <Icon name={meta.icon} size={16} />
+        <span
+          className="inline-flex items-center justify-center rounded-full shrink-0"
+          style={{
+            width: 22,
+            height: 22,
+            background: `radial-gradient(circle at 50% 35%, ${meta.accent}55, ${meta.accent}18)`,
+            boxShadow: `inset 0 0 0 1px ${meta.accent}88`,
+          }}
+        >
+          <Icon name={meta.icon} size={14} />
+        </span>
         <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
           {meta.label}
         </span>
@@ -351,6 +370,58 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
   );
 }
 
+/** A wide desert panorama title strip — twin suns, dune ridges, a distant worm. */
+function BoardHeader({ view }: { view: ImpVisibleState }) {
+  return (
+    <div className="relative rounded-xl overflow-hidden mb-2.5 ring-1 ring-[#7b422255]">
+      <svg viewBox="0 0 600 90" width="100%" height="76" preserveAspectRatio="xMidYMid slice" aria-hidden="true" className="block">
+        <defs>
+          <linearGradient id="bh-sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#c98a3e" stopOpacity="0.55" />
+            <stop offset="55%" stopColor="#2a1c11" />
+            <stop offset="100%" stopColor="#140d08" />
+          </linearGradient>
+          <linearGradient id="bh-storm" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#e0a52b" stopOpacity="0" />
+            <stop offset="100%" stopColor="#8a5a1e" stopOpacity="0.6" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="600" height="90" fill="url(#bh-sky)" />
+        {/* twin suns of Arrakis */}
+        <circle cx="470" cy="26" r="16" fill="#f6dc93" opacity="0.9" />
+        <circle cx="505" cy="20" r="9" fill="#f0b45a" opacity="0.8" />
+        {/* Coriolis storm wall sweeping in from the right */}
+        <rect x="380" y="0" width="220" height="90" fill="url(#bh-storm)" />
+        <g stroke="#e8c27a" strokeWidth="1" opacity="0.35">
+          {[8, 24, 40, 56, 72].map((y, i) => (
+            <path key={i} d={`M420 ${y} q60 -6 170 2`} fill="none" />
+          ))}
+        </g>
+        {/* distant sandworm cresting a dune */}
+        <path d="M120 78 C140 52 168 44 190 50 C205 54 214 44 218 30 C224 46 218 62 200 68 C182 74 168 78 160 90 Z" fill="#120c07" opacity="0.9" />
+        <path d="M128 80 C146 58 170 51 190 56 C202 59 210 51 214 40 C218 53 212 66 196 71 C180 76 168 80 162 90 Z" fill="#7a4a22" opacity="0.8" />
+        {/* dune ridges */}
+        <path d="M0 62 Q150 46 300 60 T600 54 V90 H0 Z" fill="#2a1c10" />
+        <path d="M0 74 Q160 62 340 74 T600 70 V90 H0 Z" fill="#1c130b" />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-between px-4">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.3em] text-amber-200/70">Imperium</div>
+          <div className="text-lg font-bold tracking-wide text-sand-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+            Arrakis
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-widest text-sand-100/60">Round</div>
+          <div className="text-base font-bold tabular-nums text-amber-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+            {view.round}<span className="text-sand-100/45 text-xs"> / {view.maxRounds}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * The agent board, laid out like the physical Dune: Imperium board — four
  * faction regions with influence tracks along the top, the Landsraad and CHOAM
@@ -389,6 +460,8 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
         boxShadow: 'inset 0 0 60px -20px #000',
       }}
     >
+      <BoardHeader view={view} />
+
       {/* Faction regions across the top */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
         {IMP_FACTIONS.map((f) => (
