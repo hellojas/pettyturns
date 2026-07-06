@@ -30,7 +30,7 @@ export default function NewGame() {
     <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-start justify-center p-8">
       <div className="w-full max-w-lg space-y-6">
         <header className="flex items-baseline justify-between">
-          <h1 className="text-2xl font-semibold text-sand-300">New game</h1>
+          <h1 className="font-display text-2xl font-bold text-sand-300 tracking-wide">New game</h1>
           <Link to="/" className="text-sm text-sand-100/50 hover:text-sand-200">
             ← back
           </Link>

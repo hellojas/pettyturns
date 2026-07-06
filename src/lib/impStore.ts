@@ -34,6 +34,8 @@ export interface ImpSavedMeta {
   createdAt: string;
   updatedAt: string;
   players: string[];
+  /** Leader id per seat, aligned with `players` (added later; may be absent on old saves). */
+  leaders?: string[];
   round: number;
   phase: string;
 }
@@ -69,7 +71,8 @@ function persist(
     gameId,
     createdAt: live.createdAt,
     updatedAt: new Date().toISOString(),
-    players: Object.values(live.players).map((p) => p.name),
+    players: live.playerOrder.map((pid) => live.players[pid].name),
+    leaders: live.playerOrder.map((pid) => live.players[pid].leaderId),
     round: live.round,
     phase: live.phase,
   };

@@ -14,7 +14,8 @@ import { useImpStore } from '../lib/impStore';
 import { Icon, type IconName } from './imp/icons';
 import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
 import { Meeple, TroopCount } from './imp/tokens';
-import { ArtEmblem, RegionBackdrop, SPACE_ART } from './imp/art';
+import { ArtEmblem, RegionBackdrop, SPACE_ART, type BackdropScene } from './imp/art';
+import VpTrack from './imp/VpTrack';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
 const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
@@ -105,13 +106,13 @@ function SpaceTile({
         <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
         {space.combat && <Icon name="sword" size={12} title="opens the conflict" />}
         {space.maker && bonus > 0 && (
-          <span className="inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
+          <span className="anim-pulse inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
             <Icon name="spice" size={12} />
             {bonus}
           </span>
         )}
         {occupant && (
-          <span className="ml-auto">
+          <span className="ml-auto anim-drop">
             <Meeple color={PLAYER_COLORS[occupantIdx % 4]} size={15} title={`agent: ${view.players[occupant].name}`} />
           </span>
         )}
@@ -217,7 +218,7 @@ function FactionRegion({
         </span>
         <div className="relative flex items-center gap-1.5">
           <Icon name={meta.icon} size={16} />
-          <span className="text-[12px] font-semibold tracking-wide" style={{ color: meta.accent }}>
+          <span className="font-display text-[13px] font-bold tracking-wide" style={{ color: meta.accent }}>
             {meta.label}
           </span>
         </div>
@@ -256,7 +257,7 @@ function SpaceCluster({
   onSelect: (id: string) => void;
   cols?: number;
   /** Optional continuous region backdrop tying the cluster into one place. */
-  scene?: 'dunes' | 'skyline';
+  scene?: BackdropScene;
 }) {
   const meta = GROUP_META[group];
   const spaces = IMP_SPACE_LIST.filter((s) => s.group === group);
@@ -268,7 +269,7 @@ function SpaceCluster({
       {scene && <RegionBackdrop scene={scene} color={meta.accent} opacity={0.5} />}
       <div className="relative flex items-center gap-1.5 px-0.5 mb-1.5">
         <Icon name={meta.icon} size={15} />
-        <span className="text-[11px] font-semibold tracking-wide" style={{ color: meta.accent }}>
+        <span className="font-display text-[12px] font-bold tracking-wide" style={{ color: meta.accent }}>
           {meta.label}
         </span>
       </div>
@@ -313,7 +314,7 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
         <>
           <div className="relative flex items-center gap-2">
             <Icon name="sword" size={20} />
-            <span className="font-semibold text-sand-100 text-[15px] leading-tight">{conflict.name}</span>
+            <span className="font-display font-bold text-sand-100 text-[16px] leading-tight">{conflict.name}</span>
             <span
               className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0"
               style={{ background: `${tierColor}33`, color: tierColor, border: `1px solid ${tierColor}77` }}
@@ -400,7 +401,11 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
       }}
     >
       <div className="tex-spice absolute inset-0 pointer-events-none opacity-70" aria-hidden />
-      {/* Faction regions across the top */}
+      {/* Victory track across the top edge */}
+      <div className="relative mb-2">
+        <VpTrack view={view} />
+      </div>
+      {/* Faction regions */}
       <div className="relative grid grid-cols-2 xl:grid-cols-4 gap-2">
         {IMP_FACTIONS.map((f) => (
           <FactionRegion key={f} faction={f} {...common} />
@@ -409,9 +414,9 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
 
       {/* Landsraad · Conflict · CHOAM */}
       <div className="relative grid grid-cols-1 lg:grid-cols-[1.15fr_1fr_0.85fr] gap-2 mt-2 items-stretch">
-        <SpaceCluster group="landsraad" cols={1} {...common} />
+        <SpaceCluster group="landsraad" cols={1} scene="columns" {...common} />
         <ConflictMedallion view={view} />
-        <SpaceCluster group="choam" cols={1} {...common} />
+        <SpaceCluster group="choam" cols={1} scene="exchange" {...common} />
       </div>
 
       {/* Cities */}

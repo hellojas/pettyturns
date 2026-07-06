@@ -45,7 +45,7 @@ export default function Game() {
     <main className="min-h-screen bg-dusk-900 text-sand-100 p-4">
       <div className="max-w-[1500px] mx-auto">
         <header className="flex items-baseline gap-4 mb-3">
-          <Link to="/" className="text-sand-300 font-semibold hover:underline">
+          <Link to="/" className="font-display text-lg font-bold text-sand-300 hover:underline tracking-wide">
             Imperium Engine
           </Link>
           <span className="text-xs text-sand-100/40">game {view.gameId}</span>
