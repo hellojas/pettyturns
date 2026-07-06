@@ -81,16 +81,38 @@ function combatIntrigue(state: ImpGameState, pid: PlayerId): ImpAction | null {
     .reduce((max, p) => Math.max(max, combatStrength(state, p)), 0);
   if (combatStrength(state, pid) > topOther) return null; // already winning — save it
 
+  // The strongest opponent still in the fight — the natural target for a
+  // troop-removing combat card.
+  const strongestOpponent = state.playerOrder
+    .filter((p) => p !== pid && state.players[p].inConflict > 0)
+    .sort((a, b) => combatStrength(state, b) - combatStrength(state, a))[0];
+
   const combatCards = state.hidden[pid].intrigue
     .filter((id) => IMP_INTRIGUE_DEFS[state.intrigueById[id].defId].kind === 'combat')
     .sort(
       (a, b) =>
-        (IMP_INTRIGUE_DEFS[state.intrigueById[b].defId].gains?.swords ?? 0) -
-        (IMP_INTRIGUE_DEFS[state.intrigueById[a].defId].gains?.swords ?? 0),
+        combatCardValue(IMP_INTRIGUE_DEFS[state.intrigueById[b].defId]) -
+        combatCardValue(IMP_INTRIGUE_DEFS[state.intrigueById[a].defId]),
     );
   return firstValid(
     state,
-    combatCards.map((intrigueId) => ({ type: 'imp/playIntrigue' as const, playerId: pid, intrigueId })),
+    combatCards.map((intrigueId) => {
+      const def = IMP_INTRIGUE_DEFS[state.intrigueById[intrigueId].defId];
+      const base = { type: 'imp/playIntrigue' as const, playerId: pid, intrigueId };
+      // A troop-removing card needs a target; aim it at the strongest opponent.
+      return (def.gains?.destroyTroops ?? 0) > 0
+        ? { ...base, targetPlayerId: strongestOpponent }
+        : base;
+    }),
+  );
+}
+
+/** Rough combat value: swords plus twice each troop swing (deploy or destroy). */
+function combatCardValue(def: { gains?: { swords?: number; deployTroops?: number; destroyTroops?: number } }): number {
+  return (
+    (def.gains?.swords ?? 0) +
+    2 * (def.gains?.deployTroops ?? 0) +
+    2 * (def.gains?.destroyTroops ?? 0)
   );
 }
 

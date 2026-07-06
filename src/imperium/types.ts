@@ -39,6 +39,19 @@ export interface Gains {
   vp?: number;
   persuasion?: number; // reveal only
   swords?: number; // reveal only
+  /**
+   * Combat only: deploy this many of your own troops straight into the current
+   * conflict (garrison first, then supply) — reinforcements played by a
+   * committed combatant. Distinct from `troops`, which recruits to the garrison.
+   * VERIFY the source pool (garrison vs supply) against the specific card.
+   */
+  deployTroops?: number;
+  /**
+   * Combat only: remove this many of a targeted opponent's committed troops from
+   * the conflict, returning them to that opponent's supply. Requires
+   * `targetPlayerId` on the `imp/playIntrigue` action.
+   */
+  destroyTroops?: number;
   /** May trash up to N of your cards (hand or discard). */
   trashCards?: number;
   /** Acquire a specific reserve card for free (e.g. the foldspace space). */
@@ -414,6 +427,12 @@ export interface ImpGameState {
   cardsById: Record<CardId, { id: CardId; defId: CardDefId }>;
   imperiumDeck: CardId[];
   imperiumRow: CardId[];
+  /**
+   * Remaining copies of each limited Reserve card (Arrakis Liaison, The Spice
+   * Must Flow, Foldspace). A depleted reserve can no longer be acquired; trashing
+   * a Reserve card returns it here (per the rulebook).
+   */
+  reserveSupply: Record<CardDefId, number>;
   intrigueById: Record<IntrigueId, { id: IntrigueId; defId: IntrigueDefId }>;
   intrigueDeck: IntrigueId[];
   intrigueDiscard: IntrigueId[];
@@ -481,6 +500,11 @@ export interface EndTurnAction extends ImpActionBase {
 export interface PlayIntrigueAction extends ImpActionBase {
   type: 'imp/playIntrigue';
   intrigueId: IntrigueId;
+  /**
+   * Combat cards that remove enemy troops (`destroyTroops`): which opponent to
+   * hit. Must be an opponent with at least one troop in the conflict.
+   */
+  targetPlayerId?: PlayerId;
 }
 
 export interface CombatPassAction extends ImpActionBase {

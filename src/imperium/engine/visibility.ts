@@ -58,6 +58,8 @@ export function getVisibleImperiumState(
     turn: state.turn,
     cardsById: state.cardsById, // identity map is public; hidden zones are what's redacted
     imperiumRow: state.imperiumRow,
+    reserveSupply: state.reserveSupply, // the Reserve stacks sit face up on the table
+
     intrigueById: state.intrigueById, // ids only reveal identity via public discards
     intrigueDiscard: state.intrigueDiscard,
     currentConflict: state.currentConflict,

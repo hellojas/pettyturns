@@ -618,4 +618,16 @@ export const STARTING_DECK: Array<{ defId: CardDefId; copies: number }> = [
 
 export const RESERVE_DEF_IDS: CardDefId[] = ['foldspace', 'arrakisLiaison', 'theSpiceMustFlow'];
 
+/**
+ * Copies of each Reserve card available at game start (a limited stack, not an
+ * infinite supply). Confirmed from the rulebook components list: 8 Arrakis
+ * Liaison, 10 The Spice Must Flow, 6 Foldspace. A depleted stack can no longer
+ * be acquired; a trashed Reserve card returns to its stack.
+ */
+export const RESERVE_SUPPLY: Record<CardDefId, number> = {
+  arrakisLiaison: 8,
+  theSpiceMustFlow: 10,
+  foldspace: 6,
+};
+
 export const IMPERIUM_DECK_DEFS = Object.values(IMP_CARD_DEFS).filter((d) => d.source === 'imperium');

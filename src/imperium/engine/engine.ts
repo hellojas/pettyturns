@@ -197,6 +197,8 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
       const reserveDef = RESERVE_DEF_IDS.includes(a.cardId) && IMP_CARD_DEFS[a.cardId]?.cost > 0;
       if (!rowCard && !reserveDef)
         return impFail('not-for-sale', 'That card is not available to acquire.');
+      if (reserveDef && (state.reserveSupply[a.cardId] ?? 0) <= 0)
+        return impFail('sold-out', 'That reserve stack is empty.');
       const cost = rowCard ? cardDef(state, a.cardId as CardId).cost : IMP_CARD_DEFS[a.cardId].cost;
       if (cost > p.persuasion) return impFail('cannot-afford', `That card costs ${cost} persuasion.`);
       return impOk();
@@ -224,6 +226,14 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
         if (state.phase !== 'combat') return impFail('not-combat', 'Combat cards play during combat.');
         if (state.turn !== pid) return impFail('not-your-turn', 'Wait for your combat window.');
         if (p.inConflict <= 0) return impFail('not-fighting', 'You have no troops in the conflict.');
+        if ((def.gains?.destroyTroops ?? 0) > 0) {
+          const target = a.targetPlayerId;
+          if (!target) return impFail('target-required', 'Choose an opponent to remove troops from.');
+          if (target === pid) return impFail('bad-target', 'You cannot target yourself.');
+          const tp = state.players[target];
+          if (!tp || tp.inConflict <= 0)
+            return impFail('bad-target', 'That opponent has no troops in the conflict.');
+        }
       }
       const cost = canPay(state, pid, def.cost);
       if (!cost.ok) return impFail('cannot-afford', `You cannot pay that card's cost (${cost.reason}).`);
@@ -477,8 +487,11 @@ function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameStat
   const space = IMP_SPACES[action.spaceId];
   let next = state;
 
-  // agent + card out of hand
+  // agent + card out of hand. A self-trashing card (trashAfterAgent) leaves the
+  // deck; if it's a Reserve card it returns to its Reserve stack rather than the
+  // trash pile (rulebook), so no player zone keeps it.
   const hidden = next.hidden[pid];
+  const reserveSelfTrash = !!def.trashAfterAgent && def.source === 'reserve' && next.reserveSupply[def.id] !== undefined;
   next = {
     ...next,
     occupied: { ...next.occupied, [space.id]: pid },
@@ -486,15 +499,22 @@ function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameStat
       ...next.players,
       [pid]: { ...next.players[pid], agentsLeft: next.players[pid].agentsLeft - 1 },
     },
+    reserveSupply: reserveSelfTrash
+      ? { ...next.reserveSupply, [def.id]: next.reserveSupply[def.id] + 1 }
+      : next.reserveSupply,
     hidden: {
       ...next.hidden,
       [pid]: {
         ...hidden,
         hand: hidden.hand.filter((c) => c !== action.cardId),
-        [def.trashAfterAgent ? 'trashed' : 'inPlay']: [
-          ...(def.trashAfterAgent ? hidden.trashed : hidden.inPlay),
-          action.cardId,
-        ],
+        ...(reserveSelfTrash
+          ? {}
+          : {
+              [def.trashAfterAgent ? 'trashed' : 'inPlay']: [
+                ...(def.trashAfterAgent ? hidden.trashed : hidden.inPlay),
+                action.cardId,
+              ],
+            }),
       },
     },
   };
@@ -736,6 +756,28 @@ function applyIntrigue(state: ImpGameState, action: PlayIntrigueAction): ImpGame
     at: action.at,
   });
   next = applyGains(next, pid, def.gains).state;
+
+  // `destroyTroops` targets an opponent's committed troops, so it can't resolve
+  // inside actor-only applyGains — apply it here with the chosen target.
+  if ((def.gains?.destroyTroops ?? 0) > 0 && action.targetPlayerId) {
+    const target = action.targetPlayerId;
+    const tp = next.players[target];
+    const removed = Math.min(def.gains!.destroyTroops!, tp.inConflict);
+    if (removed > 0) {
+      next = {
+        ...next,
+        players: {
+          ...next.players,
+          [target]: { ...tp, inConflict: tp.inConflict - removed, supply: tp.supply + removed },
+        },
+      };
+      next = impLog(next, {
+        event: 'troops.destroyed',
+        text: `${next.players[pid].name} removes ${removed} of ${tp.name}'s troop(s) from the conflict.`,
+        data: { target, removed },
+      });
+    }
+  }
 
   if (def.kind === 'combat') {
     // A combat card reopens everyone's response window — but only once any

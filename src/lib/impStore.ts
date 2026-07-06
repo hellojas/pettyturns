@@ -6,6 +6,7 @@ import { stateAfter } from '../imperium/engine/replay';
 import { getVisibleImperiumState } from '../imperium/engine/visibility';
 import { LocalMockTransport, LocalStorageJournalStore } from '../imperium/net';
 import type { ImpGameSummary, ImpGameTransport } from '../imperium/net';
+import { RESERVE_SUPPLY } from '../imperium/data/cards';
 import type {
   CardId,
   ImpAction,
@@ -150,6 +151,7 @@ export function normalizeImpState(state: ImpGameState): ImpGameState {
     players,
     hidden,
     imperiumRow: state.imperiumRow ?? [],
+    reserveSupply: state.reserveSupply ?? { ...RESERVE_SUPPLY },
     intrigueDiscard: state.intrigueDiscard ?? [],
     combatPassed: state.combatPassed ?? [],
     occupied: state.occupied ?? {},

@@ -1,6 +1,6 @@
 import { shuffle } from '../../game/engine/rng';
 import { IMP_CONSTANTS } from '../data/constants';
-import { IMP_CARD_DEFS, IMPERIUM_DECK_DEFS, STARTING_DECK } from '../data/cards';
+import { IMP_CARD_DEFS, IMPERIUM_DECK_DEFS, RESERVE_SUPPLY, STARTING_DECK } from '../data/cards';
 import { IMP_CONFLICT_LIST } from '../data/conflicts';
 import { IMP_INTRIGUE_LIST } from '../data/intrigue';
 import { IMP_LEADERS } from '../data/leaders';
@@ -157,6 +157,7 @@ export function createImperiumGame(options: NewImperiumGameOptions): ImpGameStat
     cardsById,
     imperiumDeck,
     imperiumRow,
+    reserveSupply: { ...RESERVE_SUPPLY },
     intrigueById,
     intrigueDeck: intShuffle.items,
     intrigueDiscard: [],
