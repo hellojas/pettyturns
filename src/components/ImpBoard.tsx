@@ -168,9 +168,9 @@ function SpaceTile({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1">
-            <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
-            {space.maker && <Icon name="spiceTrade" size={12} title="Maker — harvest spice here" />}
+          <div className="flex items-start gap-1">
+            <span className="font-semibold text-[12px] leading-[1.1] text-sand-100 min-w-0">{space.name}</span>
+            {space.maker && <Icon name="spiceTrade" size={12} title="Maker — harvest spice here" className="mt-[1px] shrink-0" />}
             {space.combat && <CrossedSwords size={13} title="Combat space — deploy troops to the Conflict" />}
             {space.maker && bonus > 0 && (
               <span className="anim-pulse inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
