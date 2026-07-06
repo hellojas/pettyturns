@@ -104,13 +104,14 @@ function placementPassiveTroops(state: ImpGameState, pid: PlayerId, space: Board
 
 export function combatStrength(state: ImpGameState, pid: PlayerId): number {
   const p = state.players[pid];
+  // No troops in the conflict → no strength, and it can't be raised by any means
+  // (swords or leader passives). Reachable once a card removes a player's last
+  // committed troop mid-combat (rulebook: "Set Strength").
+  if (p.inConflict <= 0) return 0;
   let strength =
     p.inConflict * IMP_CONSTANTS.strengthPerTroop + p.swords * IMP_CONSTANTS.strengthPerSword;
-  // Leader passives contribute strength only while the leader is fighting.
-  if (p.inConflict > 0) {
-    for (const passive of leaderPassives(state, pid, 'combatStrength')) {
-      strength += passive.params?.strength ?? 0;
-    }
+  for (const passive of leaderPassives(state, pid, 'combatStrength')) {
+    strength += passive.params?.strength ?? 0;
   }
   return strength;
 }

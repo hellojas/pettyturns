@@ -20,8 +20,9 @@ describe('leader passives', () => {
     it('does not apply when the leader has no troops in the conflict', () => {
       let s = makeImp();
       s = patch(s, 'p1', { leaderId: 'glossuRabban', inConflict: 0, swords: 1 });
-      // only the sword counts; the passive stays dormant
-      expect(combatStrength(s, 'p1')).toBe(1);
+      // No troops in the conflict → strength is 0: the passive stays dormant AND
+      // the revealed sword doesn't count either (rulebook "Set Strength").
+      expect(combatStrength(s, 'p1')).toBe(0);
     });
 
     it('leaves a leader without a combatStrength passive unchanged', () => {

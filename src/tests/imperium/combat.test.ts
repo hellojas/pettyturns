@@ -144,14 +144,16 @@ describe('combat', () => {
     expect(s.phase).toBe('combat');
   });
 
-  it('removing an opponent’s last troop drops them out of the conflict', () => {
-    let s = armedRound({ p1: 2, p2: 1 }, { p1: 0, p2: 0 });
+  it('removing an opponent’s last troop zeroes their strength even with revealed swords', () => {
+    // p2 reveals 5 swords: 1 troop → strength 7, but 0 once the troop is gone.
+    let s = armedRound({ p1: 2, p2: 1 }, { p1: 0, p2: 5 });
+    expect(combatStrength(s, 'p2')).toBe(7);
     s = giveIntrigue(s, 'p1', 'guerrillaRaid');
     s = toWindow(s, 'p1');
     const cardId = s.hidden.p1.intrigue.find((i) => s.intrigueById[i].defId === 'guerrillaRaid')!;
     s = apply(s, { type: 'imp/playIntrigue', playerId: 'p1', intrigueId: cardId, targetPlayerId: 'p2' });
     expect(s.players.p2.inConflict).toBe(0);
-    expect(combatStrength(s, 'p2')).toBe(0); // no troops → no strength
+    expect(combatStrength(s, 'p2')).toBe(0); // no troops → no strength, swords don't count
     // p1 is now the only combatant; passing resolves and p1 takes first place.
     s = toWindow(s, 'p1');
     s = apply(s, { type: 'imp/combatPass', playerId: 'p1' });
