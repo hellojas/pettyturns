@@ -1,26 +1,8 @@
 import type { ReactNode } from 'react';
 import type { ImpCardDef } from '../imperium/types';
 import { Icon } from './imp/icons';
-import { cardAccent, costChips, gainsChips, type Chip } from './imp/visuals';
-
-/** A row of effect chips (icon + amount). Empty renders nothing. */
-function ChipRow({ chips, muted }: { chips: Chip[]; muted?: boolean }) {
-  if (!chips.length) return null;
-  return (
-    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-      {chips.map((c, i) => (
-        <span
-          key={i}
-          title={c.title}
-          className={`inline-flex items-center gap-0.5 ${muted ? 'text-sand-100/70' : 'text-sand-100/90'}`}
-        >
-          <Icon name={c.icon} size={13} />
-          {c.text && <span className="text-[11px] font-semibold tabular-nums">{c.text}</span>}
-        </span>
-      ))}
-    </div>
-  );
-}
+import { cardAccent, costChips, gainsChips } from './imp/visuals';
+import { ChipRow } from './imp/Chips';
 
 /**
  * A Dune-Imperium card face used everywhere a card appears (hand, market,

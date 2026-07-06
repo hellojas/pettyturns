@@ -5,6 +5,8 @@ import type { ImpVisibleState, PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 import ImpCard from './ImpCard';
 import { Icon } from './imp/icons';
+import { costChips, gainsChips } from './imp/visuals';
+import { ChipRow } from './imp/Chips';
 
 function defOf(view: ImpVisibleState, cardId: string) {
   return IMP_CARD_DEFS[view.cardsById[cardId].defId];
@@ -180,9 +182,19 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
                   <Icon name="intrigue" size={13} />
                   {def.name}
                 </span>
-                <span className="text-sand-100/40">
-                  {def.kind === 'endgame' ? describeEndgame(def) : def.kind}
-                </span>
+                {def.kind === 'endgame' ? (
+                  <span className="text-sand-100/40">{describeEndgame(def)}</span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    {def.cost && (
+                      <span className="inline-flex items-center gap-1 text-red-300/80">
+                        <span className="text-[9px] uppercase">pay</span>
+                        <ChipRow chips={costChips(def.cost)} size={12} muted />
+                      </span>
+                    )}
+                    <ChipRow chips={gainsChips(def.gains)} size={12} />
+                  </span>
+                )}
                 {playable && (
                   <button
                     className="btn-secondary ml-auto !py-0.5"

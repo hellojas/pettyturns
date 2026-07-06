@@ -2,14 +2,19 @@ import { IMP_LEADERS } from '../imperium/data/leaders';
 import { IMP_FACTION_INFLUENCE_REWARDS } from '../imperium/data/factions';
 import { IMP_CONSTANTS } from '../imperium/data/constants';
 import { IMP_FACTIONS, type Gains, type ImpFactionId, type ImpVisibleState, type PlayerId } from '../imperium/types';
+import { Icon, type IconName } from './imp/icons';
 
 const PLAYER_DOTS = ['#2e7d32', '#b71c1c', '#4a148c', '#e65100'];
-const FACTION_SHORT: Record<string, string> = {
-  emperor: 'EMP',
-  spacingGuild: 'GLD',
-  beneGesserit: 'BG',
-  fremen: 'FRM',
-};
+
+/** A resource readout: crisp SVG glyph + amount, matching the card iconography. */
+function Stat({ icon, value, title }: { icon: IconName; value: number | string; title: string }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" title={title}>
+      <Icon name={icon} size={12} />
+      <span className="tabular-nums">{value}</span>
+    </span>
+  );
+}
 
 /** Short original-wording summary of a step reward's Gains. */
 function describeGains(g: Gains): string {
@@ -89,27 +94,38 @@ export default function ImpPlayerMat({
               {pid === view.firstPlayer && <span title="first player">▸</span>}
               {isTurn && <span className="ml-auto text-amber-400 font-semibold shrink-0">● to act</span>}
             </div>
-            <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-sand-100/60">
-              <span className="text-sand-200 font-semibold">{p.vp} VP</span>
-              <span>◉ {p.spice}</span>
-              <span>$ {p.solari}</span>
-              <span>💧 {p.water}</span>
-              <span>⚔ {p.garrison}{p.inConflict > 0 ? ` (+${p.inConflict} in conflict)` : ''}</span>
-              <span>agents {p.agentsLeft}/{p.agentsTotal + (p.hasMentat ? 1 : 0)}</span>
-              <span>cards {handCount}</span>
-              <span>intrigue {intrigueCount}</span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sand-100/60">
+              <span className="inline-flex items-center gap-0.5 text-sand-200 font-semibold" title="victory points">
+                <Icon name="vp" size={12} />
+                <span className="tabular-nums">{p.vp}</span>
+              </span>
+              <Stat icon="spice" value={p.spice} title="spice" />
+              <Stat icon="solari" value={p.solari} title="solari" />
+              <Stat icon="water" value={p.water} title="water" />
+              <Stat
+                icon="troops"
+                value={`${p.garrison}${p.inConflict > 0 ? ` (+${p.inConflict})` : ''}`}
+                title={`garrison${p.inConflict > 0 ? ` — ${p.inConflict} in conflict` : ''}`}
+              />
+              <span title="agents available">agents {p.agentsLeft}/{p.agentsTotal + (p.hasMentat ? 1 : 0)}</span>
+              <Stat icon="draw" value={handCount} title="cards in hand" />
+              <Stat icon="intrigue" value={intrigueCount} title="intrigue cards" />
             </div>
             <div className="mt-0.5 flex gap-2 text-[10px]">
-              {IMP_FACTIONS.map((f) => (
-                <span
-                  key={f}
-                  className={view.alliances[f] === pid ? 'text-amber-300 font-bold' : 'text-sand-100/50'}
-                  title={factionTrackTooltip(f, p.influence[f], view.alliances[f] === pid)}
-                >
-                  {FACTION_SHORT[f]} {p.influence[f]}
-                  {view.alliances[f] === pid ? '★' : ''}
-                </span>
-              ))}
+              {IMP_FACTIONS.map((f) => {
+                const isAlly = view.alliances[f] === pid;
+                return (
+                  <span
+                    key={f}
+                    className={`inline-flex items-center gap-0.5 ${isAlly ? 'text-amber-300 font-bold' : 'text-sand-100/50'}`}
+                    title={factionTrackTooltip(f, p.influence[f], isAlly)}
+                  >
+                    <Icon name={f as IconName} size={12} />
+                    <span className="tabular-nums">{p.influence[f]}</span>
+                    {isAlly ? '★' : ''}
+                  </span>
+                );
+              })}
               {p.hasCouncilSeat && <span className="text-sand-300">council</span>}
               {p.hasSwordmaster && <span className="text-sand-300">swordmaster</span>}
               {p.controls.map((c) => (

@@ -1,6 +1,7 @@
 import { IMP_CONSTANTS } from '../imperium/data/constants';
 import { IMP_LEADERS } from '../imperium/data/leaders';
 import type { ImpVisibleState, PlayerId, VpSource } from '../imperium/types';
+import { Icon } from './imp/icons';
 
 const PLAYER_DOTS = ['#2e7d32', '#b71c1c', '#4a148c', '#e65100'];
 
@@ -62,7 +63,10 @@ export default function ImpGameOver({ view }: { view: ImpVisibleState }) {
               <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: PLAYER_DOTS[idx] }} />
               <span className="font-semibold text-sand-200">{p.name}</span>
               <span className="text-sand-100/40">{IMP_LEADERS[p.leaderId].name}</span>
-              <span className="ml-auto text-sand-200 font-semibold">{p.vp} VP</span>
+              <span className="ml-auto inline-flex items-center gap-1 text-sand-200 font-semibold" title="victory points">
+                <Icon name="vp" size={14} />
+                <span className="tabular-nums">{p.vp}</span>
+              </span>
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sand-100/60 pl-6">
               {sources.length === 0 ? (
