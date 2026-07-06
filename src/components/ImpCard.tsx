@@ -83,59 +83,61 @@ export default function ImpCard({
         {/* Accent spine */}
         <span className="absolute inset-y-0 left-0 w-1 z-10" style={{ background: accent }} />
 
-        {/* Illustrated banner, following the rulebook card anatomy: art with an
-            agent-icon column down the left edge, the persuasion cost top-right,
-            and the name + faction band overlaid along the bottom. */}
+        {/* Illustrated banner, following the rulebook card anatomy: an art-forward
+            illustration with the name + faction band across the top, the
+            persuasion cost as a corner tab top-right, and the agent icons in a
+            column down the left edge (wrapping if a card has many). */}
         <div className="relative">
-          <CardArt def={def} accent={accent} height={56} className="opacity-95 group-hover:opacity-100 transition-opacity" />
-          {/* legibility scrim under the title */}
+          <CardArt def={def} accent={accent} height={76} className="group-hover:scale-[1.03] transition-transform origin-center" />
+          {/* legibility scrim: darker at the top for the title, mostly clear over the art */}
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: 'linear-gradient(180deg, #0d0906aa 0%, transparent 30%, transparent 40%, #14100bf2 100%)' }}
+            style={{ background: 'linear-gradient(180deg, #0c0805e6 0%, #0c080559 32%, transparent 55%, #100c0733 100%)' }}
           />
-          {/* Agent-icon column, left edge (rulebook layout) */}
-          <div className="absolute top-1 left-1 flex flex-col gap-0.5">
-            {def.icons.length === 0 ? (
-              <span className="text-[8px] uppercase tracking-wider text-sand-100/75 bg-black/50 rounded px-1 py-0.5">
-                reveal
-              </span>
-            ) : (
-              def.icons.map((ic, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center justify-center rounded-[3px] ring-1 ring-black/60"
-                  style={{ background: '#0b0805cc', padding: 2 }}
-                >
-                  <Icon name={ic} size={12} title={ic} />
-                </span>
-              ))
-            )}
-          </div>
-          {/* Persuasion cost, top-right */}
+          {/* Persuasion cost — bright corner tab, top-right */}
           {showCost && def.cost > 0 && (
             <span
-              className="absolute top-1 right-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-bold shrink-0 ring-1 ring-black/40"
-              style={{ background: '#000000aa', color: '#f2d78a' }}
+              className="absolute top-0 right-0 inline-flex items-center gap-0.5 pl-1.5 pr-1 py-0.5 rounded-bl-lg text-[11px] font-bold shrink-0 z-20"
+              style={{ background: '#2f6fb0', color: '#eef6ff', boxShadow: '0 1px 3px #0009' }}
               title={`costs ${def.cost} persuasion`}
             >
-              <Icon name="persuasion" size={12} />
+              <Icon name="persuasion" size={11} color="#eef6ff" />
               {def.cost}
             </span>
           )}
-          {/* Name + faction band, overlaid at the bottom of the art */}
-          <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-0.5">
-            <div className="font-semibold text-[12.5px] leading-tight text-sand-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
+          {/* Agent-icon rail down the left edge (rulebook layout). Icons shrink
+              when a card carries many so the column always fits the art. */}
+          {def.icons.length > 0 && (
+            <div className="absolute left-1.5 top-1 bottom-1 z-20 flex flex-col justify-start gap-0.5">
+              {def.icons.map((ic, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center justify-center rounded-[3px] ring-1 ring-black/70"
+                  style={{ background: '#0a0705d9', padding: 1.5 }}
+                >
+                  <Icon name={ic} size={def.icons.length <= 4 ? 12 : def.icons.length <= 5 ? 11 : 9} title={ic} />
+                </span>
+              ))}
+            </div>
+          )}
+          {/* Name + faction band, inset to the right of the icon rail */}
+          <div className={`absolute top-0.5 right-8 ${def.icons.length ? 'left-[22px]' : 'left-2'}`}>
+            <div className="font-semibold text-[12px] leading-tight text-sand-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
               {def.name}
             </div>
-            {faction && (
+            {faction ? (
               <div
                 className="inline-flex items-center gap-1 mt-0.5 rounded-sm px-1 py-[1px] text-[8px] font-bold uppercase tracking-wider"
-                style={{ background: `${faction.accent}33`, color: faction.accent, boxShadow: `inset 0 0 0 1px ${faction.accent}66` }}
+                style={{ background: `${faction.accent}40`, color: '#fff', boxShadow: `inset 0 0 0 1px ${faction.accent}` }}
               >
-                <Icon name={faction.id} size={9} />
+                <Icon name={faction.id} size={9} color="#fff" />
                 {faction.label}
               </div>
-            )}
+            ) : def.icons.length === 0 ? (
+              <span className="inline-block mt-0.5 text-[8px] uppercase tracking-wider text-sand-100/70 bg-black/50 rounded px-1 py-[1px]">
+                reveal only
+              </span>
+            ) : null}
           </div>
         </div>
 

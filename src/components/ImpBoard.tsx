@@ -50,6 +50,41 @@ function ChipRow({ chips, tone }: { chips: Chip[]; tone?: 'cost' }) {
   );
 }
 
+/** Crossed swords — the rulebook's Combat-space marker. */
+function CrossedSwords({ size = 13, title }: { size?: number; title?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      style={{ display: 'inline-block', verticalAlign: 'middle' }}
+      role={title ? 'img' : undefined}
+      aria-label={title}
+    >
+      {title && <title>{title}</title>}
+      <g stroke="#d94f3d" strokeWidth="2.3" strokeLinecap="round">
+        <line x1="5" y1="19.5" x2="18.5" y2="5" />
+        <line x1="19" y1="19.5" x2="5.5" y2="5" />
+      </g>
+      <g fill="#b98a3a">
+        <rect x="2.6" y="18" width="4.6" height="2.1" rx="1" transform="rotate(45 4.9 19)" />
+        <rect x="16.8" y="18" width="4.6" height="2.1" rx="1" transform="rotate(-45 19.1 19)" />
+      </g>
+    </svg>
+  );
+}
+
+/** A control-flag banner beneath controllable spaces; filled by its holder. */
+function ControlFlag({ color, title }: { color?: string; title?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width={13} height={13} style={{ display: 'inline-block', verticalAlign: 'middle' }} role="img" aria-label={title}>
+      <title>{title}</title>
+      <line x1="6" y1="3" x2="6" y2="21" stroke="#8a7458" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M6 4 h11 l-3 3.6 l3 3.6 h-11 Z" fill={color ?? 'none'} stroke={color ?? '#8a7458'} strokeWidth="1.3" />
+    </svg>
+  );
+}
+
 /**
  * A single board location. Keeps every interaction from the original text board
  * (legal-target highlight, occupant disc, click-to-stage) but rendered as a
@@ -108,12 +143,19 @@ function SpaceTile({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1">
             <span className="font-semibold text-[12px] text-sand-100 truncate">{space.name}</span>
-            {space.combat && <Icon name="sword" size={12} title="opens the conflict" />}
+            {space.maker && <Icon name="spiceTrade" size={12} title="Maker — harvest spice here" />}
+            {space.combat && <CrossedSwords size={13} title="Combat space — deploy troops to the Conflict" />}
             {space.maker && bonus > 0 && (
               <span className="anim-pulse inline-flex items-center text-[10px] font-bold" style={{ color: '#e0a52b' }} title={`${bonus} spice waiting`}>
                 <Icon name="spice" size={12} />
                 {bonus}
               </span>
+            )}
+            {space.controlBonus && (
+              <ControlFlag
+                color={controller ? PLAYER_COLORS[controllerIdx % 4] : undefined}
+                title={controller ? `controlled by ${view.players[controller].name}` : 'control space — win a Conflict here to claim'}
+              />
             )}
             {occupant && (
               <span className="ml-auto anim-drop">
@@ -311,6 +353,19 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
     >
       <div className="absolute inset-0 pointer-events-none opacity-30"
         style={{ background: 'radial-gradient(60% 50% at 50% 45%, #e0a52b22, transparent 70%)' }} />
+      {/* Crossed-swords battlefield backdrop with garrison rings (the board's center). */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g stroke="#e0a52b" strokeWidth="0.5" fill="none" opacity="0.18">
+          <circle cx="24" cy="30" r="12" />
+          <circle cx="76" cy="30" r="12" />
+          <circle cx="24" cy="72" r="12" />
+          <circle cx="76" cy="72" r="12" />
+        </g>
+        <g stroke="#d94f3d" strokeWidth="2.4" strokeLinecap="round" opacity="0.16">
+          <line x1="28" y1="80" x2="72" y2="24" />
+          <line x1="72" y1="80" x2="28" y2="24" />
+        </g>
+      </svg>
       <div className="relative flex items-center justify-between">
         <span className="text-[10px] uppercase tracking-widest text-sand-100/45">Conflict</span>
         <span className="text-[10px] text-sand-100/50 tabular-nums">
