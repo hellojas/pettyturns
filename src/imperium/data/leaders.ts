@@ -68,6 +68,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         summary: 'Never short of a scheme: draws an intrigue card when he reveals.',
         params: { gains: { intrigueCards: 1 } }, // VERIFY trigger/amount
       },
+      {
+        id: 'baron-spoils-of-victory',
+        hook: 'onCombatWin',
+        summary: 'Turns every victory to advantage: draws an intrigue card when he wins a conflict.',
+        params: { gains: { intrigueCards: 1 } }, // VERIFY trigger/amount
+      },
     ],
   },
   glossuRabban: {
@@ -81,6 +87,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         hook: 'combatStrength',
         summary: 'Sheer brutality: adds fixed strength to any conflict he commits troops to.',
         params: { strength: 2 }, // VERIFY amount / conditions
+      },
+      {
+        id: 'rabban-plunder',
+        hook: 'onCombatWin',
+        summary: 'Plunders the spoils: seizes spice when he wins a conflict.',
+        params: { gains: { spice: 2 } }, // VERIFY amount
       },
     ],
   },
@@ -123,6 +135,12 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
         hook: 'onAgentPlaced',
         summary: 'Trades on her city holdings: gains coin when sending an agent to a city space.',
         params: { group: 'city', gains: { solari: 1 } }, // VERIFY amount
+      },
+      {
+        id: 'helena-industrial-dividend',
+        hook: 'onAcquireCard',
+        summary: 'Industrial dividends: gains coin whenever she acquires a card.',
+        params: { gains: { solari: 1 } }, // VERIFY amount
       },
     ],
   },

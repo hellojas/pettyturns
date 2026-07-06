@@ -2,6 +2,7 @@ import { nextInt, shuffle } from '../../game/engine/rng';
 import { IMP_CONSTANTS } from '../data/constants';
 import { IMP_FACTION_INFLUENCE_REWARDS } from '../data/factions';
 import { IMP_CARD_DEFS } from '../data/cards';
+import { IMP_LEADERS } from '../data/leaders';
 import type {
   CardDefId,
   CardId,
@@ -378,6 +379,31 @@ export function trashOneCard(state: ImpGameState, pid: PlayerId, cardId: CardId)
 }
 
 /** Create an instance of a def (reserve buys / grants) and put it in the player's discard. */
+/**
+ * Fire a leader's income-style passives for a hook (`onAcquireCard`,
+ * `onCombatWin`, ...), applying each matching passive's `params.gains`. Pure,
+ * data-driven, and safe to call at exactly the rule point the hook names — the
+ * engine stays generic and the leader roster is editable in config.
+ */
+export function fireLeaderHook(
+  state: ImpGameState,
+  pid: PlayerId,
+  hook: 'onAcquireCard' | 'onCombatWin',
+): ImpGameState {
+  const leader = IMP_LEADERS[state.players[pid].leaderId];
+  let next = state;
+  for (const passive of leader?.passives ?? []) {
+    if (passive.hook !== hook || !passive.params?.gains) continue;
+    next = applyGains(next, pid, passive.params.gains, { source: 'other', detail: leader.name }).state;
+    next = impLog(next, {
+      event: 'leader.passive',
+      text: `${next.players[pid].name}'s leader ability triggers (${passive.summary}).`,
+      data: { leaderId: leader.id, passiveId: passive.id, hook },
+    });
+  }
+  return next;
+}
+
 export function acquireCard(state: ImpGameState, pid: PlayerId, defId: CardDefId): ImpGameState {
   const def = IMP_CARD_DEFS[defId];
   if (!def) throw new Error(`unknown card def '${defId}'`);
@@ -399,5 +425,6 @@ export function acquireCard(state: ImpGameState, pid: PlayerId, defId: CardDefId
   if (def.acquireGains) {
     next = applyGains(next, pid, def.acquireGains, { source: 'card', detail: def.name }).state;
   }
+  next = fireLeaderHook(next, pid, 'onAcquireCard');
   return next;
 }

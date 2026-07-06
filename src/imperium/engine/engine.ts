@@ -32,6 +32,7 @@ import {
   acquireCard,
   trashOneCard,
   enqueueDecision,
+  fireLeaderHook,
 } from './effects';
 import { impLog, impPrivate } from './log';
 
@@ -699,6 +700,7 @@ function applyBuy(state: ImpGameState, action: BuyCardAction): ImpGameState {
       at: action.at,
     });
     if (def.acquireGains) next = applyGains(next, pid, def.acquireGains, { source: 'card', detail: def.name }).state;
+    next = fireLeaderHook(next, pid, 'onAcquireCard');
     return next;
   }
 
@@ -812,6 +814,7 @@ function resolveCombat(state: ImpGameState): ImpGameState {
             source: 'conflict',
             detail: `${conflict.name} (${ordinal(rewardPlace)} place)`,
           }).state;
+          if (rewardPlace === 1) next = fireLeaderHook(next, pid, 'onCombatWin');
         } else {
           next = impLog(next, {
             event: 'combat.noReward',
