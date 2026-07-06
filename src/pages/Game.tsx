@@ -8,6 +8,7 @@ import ImpHand from '../components/ImpHand';
 import ImpLog from '../components/ImpLog';
 import ImpMarket from '../components/ImpMarket';
 import ImpPlayerMat from '../components/ImpPlayerMat';
+import LeaderPortrait from '../components/imp/LeaderPortrait';
 import { useImpStore, useImpView } from '../lib/impStore';
 
 /** Main game screen: players/conflict left, board center, hand/market/log right. */
@@ -49,7 +50,8 @@ export default function Game() {
           </Link>
           <span className="text-xs text-sand-100/40">game {view.gameId}</span>
           {view.phase === 'finished' && view.winner && (
-            <span className="text-sm text-amber-300 font-semibold">
+            <span className="inline-flex items-center gap-1.5 text-sm text-amber-300 font-semibold">
+              <LeaderPortrait leaderId={view.players[view.winner].leaderId} size={22} />
               Game over — {view.players[view.winner].name} wins!
             </span>
           )}
@@ -83,8 +85,9 @@ export default function Game() {
                 ↷ Redo
               </button>
             </div>
-            <span className="text-xs text-sand-100/40">
-              viewing as{' '}
+            <span className="inline-flex items-center gap-1.5 text-xs text-sand-100/40">
+              viewing as
+              {viewingAs !== 'SPECTATOR' && <LeaderPortrait leaderId={view.players[viewingAs].leaderId} size={20} />}
               <span className="text-sand-200">
                 {viewingAs === 'SPECTATOR' ? 'spectator' : view.players[viewingAs].name}
               </span>

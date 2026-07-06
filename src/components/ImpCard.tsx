@@ -78,9 +78,11 @@ export default function ImpCard({
       >
         {/* Accent spine */}
         <span className="absolute inset-y-0 left-0 w-1" style={{ background: accent }} />
+        {/* Paper grain */}
+        <span className="tex-grain absolute inset-0 pointer-events-none opacity-70" aria-hidden />
 
         {/* Header: icons + name + cost */}
-        <div className="pl-2.5 pr-1.5 pt-1.5 pb-1">
+        <div className="relative pl-2.5 pr-1.5 pt-1.5 pb-1">
           <div className="flex items-start gap-1">
             <div className="flex items-center gap-0.5 flex-wrap">
               {def.icons.length === 0 ? (
@@ -113,7 +115,7 @@ export default function ImpCard({
 
         {/* Agent effect */}
         {hasAgent && (
-          <div className="mx-2 mb-1 rounded bg-black/25 px-1.5 py-1">
+          <div className="relative mx-2 mb-1 rounded bg-black/25 px-1.5 py-1">
             <div className="text-[8px] uppercase tracking-widest text-sand-100/35 mb-0.5">Agent</div>
             <div className="flex flex-col gap-0.5">
               <ChipRow chips={agent} />
@@ -131,7 +133,7 @@ export default function ImpCard({
 
         {/* Reveal band */}
         <div
-          className="mt-auto flex items-center gap-1.5 px-2.5 py-1 border-t"
+          className="relative mt-auto flex items-center gap-1.5 px-2.5 py-1 border-t"
           style={{ borderColor: `${accent}44`, background: `${accent}1f` }}
         >
           <span className="text-[8px] uppercase tracking-widest text-sand-100/45">Reveal</span>
@@ -139,7 +141,7 @@ export default function ImpCard({
         </div>
 
         {acquire.length > 0 && (
-          <div className="flex items-center gap-1 px-2.5 py-0.5 text-[10px] text-sand-100/55 border-t border-black/30">
+          <div className="relative flex items-center gap-1 px-2.5 py-0.5 text-[10px] text-sand-100/55 border-t border-black/30">
             <span className="uppercase tracking-wider text-[8px]">on&nbsp;acquire</span>
             <ChipRow chips={acquire} muted />
           </div>

@@ -22,3 +22,25 @@
       focus:outline-none focus:border-sand-500;
   }
 }
+
+@layer utilities {
+  /* Fine paper/sand grain — a subtle speckle laid over dark surfaces. */
+  .tex-grain {
+    background-image: radial-gradient(rgba(247, 236, 215, 0.05) 0.5px, transparent 1px);
+    background-size: 5px 5px;
+  }
+  /* Coarser spice speckle for the board felt. */
+  .tex-spice {
+    background-image:
+      radial-gradient(rgba(224, 165, 43, 0.09) 1px, transparent 1.6px),
+      radial-gradient(rgba(247, 236, 215, 0.04) 0.5px, transparent 1px);
+    background-size: 15px 15px, 5px 5px;
+    background-position: 0 0, 3px 4px;
+  }
+  /* Woven cross-hatch for card backs. */
+  .tex-weave {
+    background-image:
+      repeating-linear-gradient(45deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px),
+      repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 4px);
+  }
+}

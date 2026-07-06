@@ -13,6 +13,7 @@ import { IMP_FACTIONS } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
 import { Icon, type IconName } from './imp/icons';
 import { costChips, gainsChips, GROUP_META, PLAYER_COLORS, type Chip } from './imp/visuals';
+import { Meeple, TroopCount } from './imp/tokens';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
 const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
@@ -30,17 +31,6 @@ function specialLabel(space: BoardSpaceDef): string | null {
     default:
       return null;
   }
-}
-
-/** A small colored agent disc in a player's seat color. */
-function AgentDisc({ color, title }: { color: string; title?: string }) {
-  return (
-    <span
-      className="inline-block w-3 h-3 rounded-full ring-2 ring-black/40 shrink-0"
-      style={{ background: color }}
-      title={title}
-    />
-  );
 }
 
 function ChipRow({ chips, tone }: { chips: Chip[]; tone?: 'cost' }) {
@@ -118,7 +108,7 @@ function SpaceTile({
         )}
         {occupant && (
           <span className="ml-auto">
-            <AgentDisc color={PLAYER_COLORS[occupantIdx % 4]} title={`agent: ${view.players[occupant].name}`} />
+            <Meeple color={PLAYER_COLORS[occupantIdx % 4]} size={15} title={`agent: ${view.players[occupant].name}`} />
           </span>
         )}
       </div>
@@ -139,7 +129,7 @@ function SpaceTile({
       </div>
       {controller && (
         <div className="pl-1 mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
-          <AgentDisc color={PLAYER_COLORS[controllerIdx % 4]} />
+          <Meeple color={PLAYER_COLORS[controllerIdx % 4]} size={11} />
           controlled by {view.players[controller].name}
         </div>
       )}
@@ -333,10 +323,11 @@ function ConflictMedallion({ view }: { view: ImpVisibleState }) {
               <>
                 <span className="text-[9px] uppercase tracking-wider text-red-300/70">committed</span>
                 {combatants.map((pid) => (
-                  <span key={pid} className="inline-flex items-center gap-0.5">
-                    <AgentDisc color={PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]} title={view.players[pid].name} />
-                    <span className="text-[10px] text-sand-100/70">{view.players[pid].inConflict}</span>
-                  </span>
+                  <TroopCount
+                    key={pid}
+                    color={PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]}
+                    count={view.players[pid].inConflict}
+                  />
                 ))}
               </>
             ) : (
@@ -382,34 +373,35 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
 
   return (
     <div
-      className="rounded-2xl p-2.5 sm:p-3"
+      className="relative rounded-2xl p-2.5 sm:p-3 overflow-hidden"
       style={{
         background: 'radial-gradient(120% 80% at 50% -10%, #2a2016, #17110b 75%)',
         border: '1px solid #7b422277',
         boxShadow: 'inset 0 0 60px -20px #000',
       }}
     >
+      <div className="tex-spice absolute inset-0 pointer-events-none opacity-70" aria-hidden />
       {/* Faction regions across the top */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+      <div className="relative grid grid-cols-2 xl:grid-cols-4 gap-2">
         {IMP_FACTIONS.map((f) => (
           <FactionRegion key={f} faction={f} {...common} />
         ))}
       </div>
 
       {/* Landsraad · Conflict · CHOAM */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_1fr_0.85fr] gap-2 mt-2 items-stretch">
+      <div className="relative grid grid-cols-1 lg:grid-cols-[1.15fr_1fr_0.85fr] gap-2 mt-2 items-stretch">
         <SpaceCluster group="landsraad" cols={1} {...common} />
         <ConflictMedallion view={view} />
         <SpaceCluster group="choam" cols={1} {...common} />
       </div>
 
       {/* Cities */}
-      <div className="mt-2">
+      <div className="relative mt-2">
         <SpaceCluster group="city" cols={2} {...common} />
       </div>
 
       {/* Deep desert */}
-      <div className="mt-2">
+      <div className="relative mt-2">
         <SpaceCluster group="desert" cols={3} {...common} />
       </div>
     </div>
