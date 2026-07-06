@@ -8,6 +8,7 @@ import type {
   BoardSpaceDef,
   BuyCardAction,
   CardId,
+  ConflictId,
   EndgameCondition,
   ImpAction,
   ImpAllowedAction,
@@ -20,6 +21,7 @@ import type {
   PlayCardAction,
   PlayIntrigueAction,
   PlayerId,
+  SpaceId,
   ResolveDecisionAction,
 } from '../types';
 import { IMP_FACTIONS, impFail, impOk } from '../types';
@@ -889,6 +891,39 @@ function resolveCombat(state: ImpGameState): ImpGameState {
   return settle(next, { kind: 'afterCombat' });
 }
 
+/** The control spaces a conflict is fought "for" (spaces it would grant control of). */
+function conflictControlSpaces(conflictId: ConflictId | null): SpaceId[] {
+  if (!conflictId) return [];
+  const spaces = IMP_CONFLICT_DEFS[conflictId].rewards
+    .map((r) => r.gains.control)
+    .filter((s): s is SpaceId => !!s);
+  return [...new Set(spaces)];
+}
+
+/** Deploy one supply troop for each controller of a space the new conflict is for. */
+function applyControlDefensiveBonus(state: ImpGameState): ImpGameState {
+  let next = state;
+  for (const spaceId of conflictControlSpaces(next.currentConflict)) {
+    const controller = next.controlledBy[spaceId];
+    if (!controller) continue;
+    const cp = next.players[controller];
+    if (cp.supply <= 0) continue;
+    next = {
+      ...next,
+      players: {
+        ...next.players,
+        [controller]: { ...cp, supply: cp.supply - 1, inConflict: cp.inConflict + 1 },
+      },
+    };
+    next = impLog(next, {
+      event: 'combat.defensiveBonus',
+      text: `${next.players[controller].name} deploys a defensive troop for controlling ${IMP_SPACES[spaceId].name}.`,
+      data: { controller, spaceId },
+    });
+  }
+  return next;
+}
+
 function makersAndRecall(state: ImpGameState): ImpGameState {
   let next = state;
 
@@ -960,6 +995,12 @@ function makersAndRecall(state: ImpGameState): ImpGameState {
       });
     }
   }
+
+  // Control defensive bonus: when the freshly revealed conflict is for a space
+  // you already control, you deploy one troop from your supply to it (rulebook).
+  // MVP TEMPORARY SHORTCUT: the rulebook makes this optional ("may"); we take it
+  // automatically, since a free defensive troop is virtually always wanted.
+  next = applyControlDefensiveBonus(next);
 
   // leader passives: per-round passive income (in seat order from the first player)
   for (const pid of orderFromFirst(next)) {

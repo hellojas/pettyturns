@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { combatStrength, impValidate } from '../../imperium/engine/engine';
 import { IMP_CONFLICT_DEFS } from '../../imperium/data/conflicts';
 import type { ImpGameState } from '../../imperium/types';
-import { apply, giveIntrigue, makeImp, patch, setHand } from './helpers';
+import { apply, endRoundQuietly, giveIntrigue, makeImp, patch, setHand } from './helpers';
 
 /** Drive the combat intrigue window round to a given player. */
 function toWindow(state: ImpGameState, pid: string): ImpGameState {
@@ -174,5 +174,32 @@ describe('combat', () => {
     expect(s.round).toBe(2);
     // the round-2 control bonus for the city pays 1 solari
     expect(s.players.p1.solari).toBe(1);
+  });
+
+  it('controlling a space grants a defensive troop when a conflict for it is revealed', () => {
+    let s = makeImp();
+    // p1 controls Arrakeen; the next conflict up is the battle for Arrakeen.
+    s = { ...s, currentConflict: 'skirmishA', conflictDeck: ['battleForArrakeen', ...s.conflictDeck] };
+    s = { ...s, controlledBy: { arrakeen: 'p1' } };
+    s = patch(s, 'p1', { controls: ['arrakeen'] });
+    const supplyBefore = s.players.p1.supply;
+
+    s = endRoundQuietly(s); // round 1 resolves, round 2 reveals battleForArrakeen
+    expect(s.round).toBe(2);
+    expect(s.currentConflict).toBe('battleForArrakeen');
+    // p1 gets a head start: one troop deployed straight from supply.
+    expect(s.players.p1.inConflict).toBe(1);
+    expect(s.players.p1.supply).toBe(supplyBefore - 1);
+    expect(s.players.p2.inConflict).toBe(0); // p2 controls nothing
+  });
+
+  it('breaks a final tie on garrisoned troops after spice/solari/water', () => {
+    let s = makeImp();
+    // Both reach the target and tie on every earlier tiebreaker but garrison.
+    s = patch(s, 'p1', { vp: 10, spice: 0, solari: 0, water: 0, garrison: 1 });
+    s = patch(s, 'p2', { vp: 10, spice: 0, solari: 0, water: 0, garrison: 5 });
+    s = endRoundQuietly(s);
+    expect(s.phase).toBe('finished');
+    expect(s.winner).toBe('p2'); // more garrisoned troops wins the tie
   });
 });

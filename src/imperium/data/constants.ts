@@ -26,8 +26,14 @@ export const IMP_CONSTANTS = {
   baseDeployLimit: 2,
   /** Influence track. */
   influenceMax: 6,
-  /** Crossing these levels upward gains 1 VP each (lost if crossed downward). VERIFY. */
-  influenceVpLevels: [2, 4],
+  /**
+   * Crossing this level upward gains 1 VP (lost if crossed downward). Confirmed
+   * from the rulebook: reaching 2 Influence grants a VP. Level 4 grants the
+   * track's resource bonus and (for the first to reach it) an Alliance whose
+   * token carries its own VP — but no separate level VP, so only 2 is listed
+   * here (listing 4 would double-count the Alliance VP).
+   */
+  influenceVpLevels: [2],
   /** Alliance token: held at this level+ by the player with the most influence. Verified: 4. */
   allianceLevel: 4,
   /** Imperium row size. */
@@ -36,6 +42,9 @@ export const IMP_CONSTANTS = {
   sellMelangeRates: { 2: 6, 3: 8, 4: 10, 5: 12 } as Record<number, number>,
   /** Conflict deck composition drawn per game: [tier1, tier2, tier3]. VERIFY. */
   conflictMix: { tier1: 1, tier2: 5, tier3: 4 },
-  /** End-of-game tiebreakers after VP, in order. VERIFY. */
-  tiebreakers: ['spice', 'solari', 'water'] as const,
+  /**
+   * End-of-game tiebreakers after VP, in order. Confirmed from the rulebook:
+   * spice, then Solari, then water, then garrisoned troops.
+   */
+  tiebreakers: ['spice', 'solari', 'water', 'garrison'] as const,
 } as const;

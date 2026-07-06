@@ -23,9 +23,9 @@ describe('influence and alliances', () => {
 
   it('awards the alliance to the sole player at the alliance level', () => {
     let s = makeImp();
-    s = addInfluence(s, 'p1', 'spacingGuild', 4); // crosses 2 and 4 → 2 VP + alliance VP
+    s = addInfluence(s, 'p1', 'spacingGuild', 4); // crosses level 2 (1 VP) + alliance VP
     expect(s.alliances.spacingGuild).toBe('p1');
-    expect(s.players.p1.vp).toBe(3);
+    expect(s.players.p1.vp).toBe(2); // 1 for reaching level 2, 1 for the alliance
   });
 
   it('a rival must exceed the holder to take the alliance', () => {
@@ -37,8 +37,8 @@ describe('influence and alliances', () => {
     expect(s.alliances.fremen).toBe('p1');
     s = addInfluence(s, 'p2', 'fremen', 1); // now 5 > 4
     expect(s.alliances.fremen).toBe('p2');
-    expect(s.players.p2.vp).toBe(vpBefore + 2 /* levels */ + 1 /* alliance */);
-    expect(s.players.p1.vp).toBe(2); // kept level VPs, lost the alliance VP
+    expect(s.players.p2.vp).toBe(vpBefore + 1 /* level 2 */ + 1 /* alliance */);
+    expect(s.players.p1.vp).toBe(1); // kept the level-2 VP, lost the alliance VP
   });
 
   it('losing the qualifying level forfeits the alliance token', () => {
