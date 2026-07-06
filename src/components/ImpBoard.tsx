@@ -376,7 +376,14 @@ function SpaceCluster({
           {meta.label}
         </span>
       </div>
-      <div className="relative grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      <div
+        className="relative grid gap-1"
+        style={{
+          // Multi-column clusters wrap by available width (min tile ~190px) so
+          // cities/desert reflow gracefully in a narrow board column.
+          gridTemplateColumns: cols > 1 ? 'repeat(auto-fit, minmax(190px, 1fr))' : '1fr',
+        }}
+      >
         {spaces.map((s) => (
           <SpaceTile
             key={s.id}
@@ -726,8 +733,9 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
       <div className="relative mb-2">
         <VpTrack view={view} />
       </div>
-      {/* Faction regions */}
-      <div className="relative grid grid-cols-2 xl:grid-cols-4 gap-2">
+      {/* Faction regions — a roomy 2×2 at typical widths, going 4-wide only on
+          large screens so they never cram into four narrow columns. */}
+      <div className="relative grid gap-2 grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4">
         {IMP_FACTIONS.map((f) => (
           <FactionRegion key={f} faction={f} {...common} />
         ))}

@@ -109,7 +109,7 @@ export default function Game() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_320px] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_300px] 2xl:grid-cols-[300px_minmax(0,1fr)_340px] gap-4">
           <div className="space-y-4">
             {view.phase === 'finished' && (
               <section className="panel border-amber-600">

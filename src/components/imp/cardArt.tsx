@@ -23,39 +23,79 @@ interface MotifProps {
   uid: string;
 }
 
-/** Shared sky + dune backdrop every scene is painted over. */
+/** Lighten (amt > 0) or darken (amt < 0) a #rrggbb hex by lerping to white/black. */
+function shade(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const t = amt < 0 ? 0 : 255;
+  const p = Math.abs(amt);
+  const ch = (c: number) => Math.round((t - c) * p + c);
+  const r = ch((n >> 16) & 255);
+  const g = ch((n >> 8) & 255);
+  const b = ch(n & 255);
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+}
+
+/**
+ * Shared, atmospheric sky + dune backdrop every scene is painted over. It also
+ * registers a per-card `-form` gradient (top-lit accent → shadowed base) so any
+ * subject drawn with `ink(uid)` reads as a modeled, lit form rather than a flat
+ * silhouette.
+ */
 function Backdrop({ uid, accent, suns = true }: MotifProps & { suns?: boolean }) {
   return (
     <>
       <defs>
         <linearGradient id={`${uid}-sky`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={accent} stopOpacity="0.42" />
-          <stop offset="55%" stopColor="#2a1d12" />
-          <stop offset="100%" stopColor="#160f09" />
-        </linearGradient>
-        <linearGradient id={`${uid}-dune`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3a2a19" />
-          <stop offset="100%" stopColor="#1a120b" />
+          <stop offset="0%" stopColor={shade(accent, 0.12)} stopOpacity="0.55" />
+          <stop offset="34%" stopColor="#2c1e13" />
+          <stop offset="100%" stopColor="#130c07" />
         </linearGradient>
         <radialGradient id={`${uid}-glow`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#ffdf9e" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="#ffdf9e" stopOpacity="0" />
+          <stop offset="0%" stopColor="#ffe6b0" stopOpacity="0.75" />
+          <stop offset="55%" stopColor="#f0b45a" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#f0b45a" stopOpacity="0" />
         </radialGradient>
+        <linearGradient id={`${uid}-haze`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f6c988" stopOpacity="0" />
+          <stop offset="100%" stopColor="#f6c988" stopOpacity="0.2" />
+        </linearGradient>
+        <linearGradient id={`${uid}-dfar`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#3a2817" />
+          <stop offset="100%" stopColor="#261a10" />
+        </linearGradient>
+        <linearGradient id={`${uid}-dnear`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#42301c" />
+          <stop offset="100%" stopColor="#140d08" />
+        </linearGradient>
+        <linearGradient id={`${uid}-form`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={shade(accent, 0.45)} />
+          <stop offset="52%" stopColor={accent} />
+          <stop offset="100%" stopColor={shade(accent, -0.5)} />
+        </linearGradient>
       </defs>
       <rect x="0" y="0" width={W} height={H} fill={`url(#${uid}-sky)`} />
+      {/* warm horizon haze */}
+      <rect x="0" y="24" width={W} height="24" fill={`url(#${uid}-haze)`} />
       {suns && (
         <>
-          {/* twin-sun glow halo, then the two discs */}
-          <circle cx="93" cy="14" r="13" fill={`url(#${uid}-glow)`} />
-          <circle cx="90" cy="15" r="7" fill="#f4d78a" opacity="0.9" />
-          <circle cx="102" cy="12" r="4" fill="#f0b45a" opacity="0.75" />
+          {/* twin suns: a soft corona, a bright primary disc, a smaller second sun */}
+          <circle cx="91" cy="15" r="21" fill={`url(#${uid}-glow)`} />
+          <circle cx="90" cy="15" r="6.5" fill="#ffe7b0" opacity="0.96" />
+          <circle cx="90" cy="15" r="3.6" fill="#fff7e2" />
+          <circle cx="104" cy="12" r="3.3" fill="#f0b45a" opacity="0.82" />
         </>
       )}
-      {/* far + near dune ridges */}
-      <path d="M0 40 Q30 30 60 38 T120 34 V56 H0 Z" fill="#2a1d11" opacity="0.9" />
-      <path d={`M0 47 Q40 40 74 47 T120 45 V56 H0 Z`} fill={`url(#${uid}-dune)`} />
-      {/* rim-light along the near ridge crest for a touch of dimension */}
-      <path d={`M0 47 Q40 40 74 47 T120 45`} fill="none" stroke="#f6dca6" strokeWidth="0.6" opacity="0.28" />
+      {/* far dune ridge — hazy, low contrast */}
+      <path d="M0 36 Q28 28 58 34 T120 31 V56 H0 Z" fill={`url(#${uid}-dfar)`} opacity="0.9" />
+      <path d="M0 36 Q28 28 58 34 T120 31" fill="none" stroke="#f6dca6" strokeWidth="0.5" opacity="0.16" />
+      {/* near dune ridge — foreground, darker, lit crest */}
+      <path d="M0 46 Q40 39 74 46 T120 44 V56 H0 Z" fill={`url(#${uid}-dnear)`} />
+      <path d="M0 46 Q40 39 74 46 T120 44" fill="none" stroke="#ffdca0" strokeWidth="0.6" opacity="0.32" />
+      {/* wind ripples raked across the near sand */}
+      <g stroke="#0c0805" strokeWidth="0.5" opacity="0.24" fill="none">
+        <path d="M6 51 Q30 48 54 51" />
+        <path d="M40 53 Q68 50 96 53" />
+      </g>
     </>
   );
 }
@@ -80,9 +120,10 @@ function Sheen({ uid }: { uid: string }) {
   );
 }
 
-/** Small helper: a stroked/filled silhouette group tinted by ink. */
-function ink(accent: string) {
-  return { fill: accent };
+/** A subject fill: the per-card top-lit `-form` gradient (registered by Backdrop),
+ *  so silhouettes read as modeled, lit shapes instead of flat colour. */
+function ink(uid: string) {
+  return { fill: `url(#${uid}-form)` };
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +143,7 @@ const warrior: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
       <path d="M46 56 C46 40 52 33 61 33 C70 33 76 40 76 56 Z" />
       <path d="M52 34 C52 24 58 19 61 19 C64 19 70 24 70 34 C66 31 56 31 52 34 Z" />
     </g>
-    <g {...ink(accent)} opacity="0.92">
+    <g {...ink(uid)} opacity="0.92">
       <path d="M53 35 C53 27 57 22 61 22 C65 22 69 27 69 35 C65 32 57 32 53 35 Z" />
       <path d="M48 56 C48 42 53 36 61 36 C69 36 74 42 74 56 Z" />
     </g>
@@ -119,7 +160,7 @@ const sister: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
     <g fill="#100b07">
       <path d="M42 56 C42 34 50 22 61 22 C72 22 80 34 80 56 Z" />
     </g>
-    <g {...ink(accent)} opacity="0.9">
+    <g {...ink(uid)} opacity="0.9">
       <path d="M46 56 C46 36 52 27 61 27 C70 27 76 36 76 56 Z" />
     </g>
     {/* face shadow inside the cowl */}
@@ -134,7 +175,7 @@ const mentat: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
   <>
     <Backdrop uid={uid} accent={accent} suns={false} />
     {/* profile head */}
-    <g {...ink(accent)} opacity="0.92">
+    <g {...ink(uid)} opacity="0.92">
       <path d="M44 56 C44 40 50 30 62 30 C74 30 76 40 76 44 L74 44 C74 38 70 34 63 34 L63 56 Z" />
       <path d="M50 34 C50 26 56 22 63 22 C72 22 76 28 76 34 C74 30 68 27 62 27 C56 27 52 30 50 34 Z" />
     </g>
@@ -161,7 +202,7 @@ const throne: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
       <line x1="60" y1="30" x2="90" y2="26" />
     </g>
     {/* throne */}
-    <g {...ink(accent)} opacity="0.95">
+    <g {...ink(uid)} opacity="0.95">
       <path d="M48 56 V38 H72 V56 Z" />
       <path d="M46 40 h4 v16 h-4 Z M70 40 h4 v16 h-4 Z" />
       <path d="M50 38 V26 h20 v12 Z" opacity="0.85" />
@@ -181,7 +222,7 @@ const worm: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
     />
     <path
       d="M34 56 C38 42 47 33 59 29 C66 27 70 23 72 16 C74 23 71 32 64 37 C57 42 52 48 50 56 Z"
-      {...ink(accent)}
+      {...ink(uid)}
       opacity="0.9"
     />
     {/* segment rings */}
@@ -237,7 +278,7 @@ const thopter: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
     <Backdrop uid={uid} accent={accent} />
     {/* ornithopter */}
     <g transform="translate(60 26)">
-      <g {...ink(accent)} opacity="0.95">
+      <g {...ink(uid)} opacity="0.95">
         <ellipse cx="0" cy="0" rx="12" ry="4.4" />
         <path d="M8 0 l10 3 l-10 1 Z" />
       </g>
@@ -272,7 +313,7 @@ const heighliner: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
       ))}
     </g>
     {/* colossal cylindrical guild ship */}
-    <g {...ink(accent)} opacity="0.95">
+    <g {...ink(uid)} opacity="0.95">
       <path d="M16 30 h88 l-6 8 h-76 Z" />
       <rect x="22" y="38" width="76" height="4" fill="#120c07" />
       <path d="M22 42 h76 l-8 6 h-60 Z" opacity="0.85" />
@@ -290,7 +331,7 @@ const cityscape: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
   <>
     <Backdrop uid={uid} accent={accent} />
     {/* domed desert city */}
-    <g {...ink(accent)} opacity="0.95">
+    <g {...ink(uid)} opacity="0.95">
       <rect x="30" y="34" width="8" height="22" />
       <rect x="42" y="26" width="10" height="30" />
       <path d="M42 26 a5 5 0 0 1 10 0 Z" />
@@ -324,7 +365,7 @@ const blade: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
     <g transform="rotate(28 60 30)">
       <path d="M60 6 C66 14 66 30 60 40 C54 30 54 14 60 6 Z" fill="#f2ead2" />
       <path d="M60 8 C64 15 64 28 60 37 C58 28 58 15 60 8 Z" fill="#ffffff" opacity="0.7" />
-      <rect x="55.5" y="40" width="9" height="4" rx="2" {...ink(accent)} />
+      <rect x="55.5" y="40" width="9" height="4" rx="2" {...ink(uid)} />
       <rect x="57.5" y="43" width="5" height="9" rx="2.5" fill="#3a2a19" />
     </g>
   </>
@@ -335,7 +376,7 @@ const sietch: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
     <Backdrop uid={uid} accent={accent} />
     {/* rock massif with cave openings */}
     <path d="M22 56 L34 24 L52 30 L64 18 L84 30 L98 56 Z" fill="#120c07" />
-    <path d="M28 56 L38 28 L54 33 L64 24 L82 33 L92 56 Z" {...ink(accent)} opacity="0.85" />
+    <path d="M28 56 L38 28 L54 33 L64 24 L82 33 L92 56 Z" {...ink(uid)} opacity="0.85" />
     {/* sietch entrances glowing */}
     <g fill="#f4d78a" opacity="0.85">
       <path d="M50 56 C50 48 58 48 58 56 Z" />
@@ -353,7 +394,7 @@ const banner: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
       <line x1="46" y1="12" x2="46" y2="54" />
       <line x1="74" y1="12" x2="74" y2="54" />
     </g>
-    <path d="M46 12 h18 l-4 6 l4 6 h-18 Z" {...ink(accent)} opacity="0.95" />
+    <path d="M46 12 h18 l-4 6 l4 6 h-18 Z" {...ink(uid)} opacity="0.95" />
     <path d="M74 12 h-18 l4 6 l-4 6 h18 Z" fill="#f2c94c" opacity="0.55" />
     {/* seal */}
     <circle cx="55" cy="18" r="2.4" fill="#f4e8c8" />
@@ -433,7 +474,7 @@ const spy: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
     <g fill="#0e0906">
       <path d="M40 56 C40 32 50 22 61 22 C72 22 82 32 82 56 Z" />
     </g>
-    <g {...ink(accent)} opacity="0.85">
+    <g {...ink(uid)} opacity="0.85">
       <path d="M45 56 C45 34 53 26 61 26 C69 26 77 34 77 56 Z" />
     </g>
     {/* mask band */}
@@ -458,7 +499,7 @@ const water: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
       <path d="M74 24 C74 24 71 28 71 30.5 a3 3 0 0 0 6 0 C77 28 74 24 74 24 Z" opacity="0.7" />
     </g>
     {/* stillsuit catch basin */}
-    <path d="M40 46 Q60 40 80 46 L78 52 Q60 47 42 52 Z" {...ink(accent)} opacity="0.9" />
+    <path d="M40 46 Q60 40 80 46 L78 52 Q60 47 42 52 Z" {...ink(uid)} opacity="0.9" />
     <ellipse cx="60" cy="46" rx="20" ry="3" fill="#4aa3df" opacity="0.55" />
   </>
 );
