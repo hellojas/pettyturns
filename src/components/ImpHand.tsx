@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { IMP_CARD_DEFS } from '../imperium/data/cards';
 import { IMP_INTRIGUE_DEFS } from '../imperium/data/intrigue';
+import { IMP_LEADERS } from '../imperium/data/leaders';
 import { IMP_SPACES } from '../imperium/data/spaces';
 import type { ImpVisibleState, PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
@@ -33,6 +34,7 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
   );
   const space = pending?.spaceId ? IMP_SPACES[pending.spaceId] : null;
   const pendingDef = pending ? defOf(view, pending.cardId) : null;
+  const leader = IMP_LEADERS[p.leaderId];
 
   return (
     <div className="space-y-2 text-xs">
@@ -50,6 +52,9 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
                   selected={selected}
                   disabled={!myTurn || p.agentsLeft <= 0}
                   dimmed={(!myTurn || p.agentsLeft <= 0) && !selected}
+                  signetLeaderName={def.signet ? leader?.name : undefined}
+                  signetGains={def.signet ? leader?.signetGains : undefined}
+                  signetCost={def.signet ? leader?.signetCost : undefined}
                   onClick={() => setPending(selected ? null : { cardId, deploy: 0 })}
                 />
               );

@@ -40,13 +40,21 @@ function factionTrackTooltip(faction: ImpFactionId, current: number, hasAlliance
   return lines.join('\n');
 }
 
-/** Hover text for a leader: its signet + passive summaries. */
+/** Original-wording summary of a leader's signet-ring ability. */
+function describeSignet(leader: (typeof IMP_LEADERS)[string]): string {
+  const gains = describeGains(leader.signetGains);
+  const cost = leader.signetCost && Object.keys(leader.signetCost).length > 0;
+  return `Signet ring: ${gains || 'special effect'}${cost ? ' (has a cost)' : ''}`;
+}
+
+/** Hover text for a leader: its signet ability, passive summaries, and any note-only ability. */
 function leaderTooltip(leaderId: string): string {
   const leader = IMP_LEADERS[leaderId];
   if (!leader) return leaderId;
-  const lines = (leader.passives ?? []).map((pw) => `• ${pw.summary}`);
+  const lines = [`◈ ${describeSignet(leader)}`];
+  for (const pw of leader.passives ?? []) lines.push(`• ${pw.summary}`);
   if (leader.passiveNote) lines.push(`• ${leader.passiveNote}`);
-  return lines.length ? `${leader.name}\n${lines.join('\n')}` : leader.name;
+  return `${leader.name}\n${lines.join('\n')}`;
 }
 
 /** A resource read-out: icon + tabular value. */
