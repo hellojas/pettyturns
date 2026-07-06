@@ -33,6 +33,17 @@ function monogram(name: string): string {
   return (first + (words.length > 1 ? second : '')).toUpperCase();
 }
 
+/**
+ * Resolve a stored portrait path against the app's base URL. Paths are written
+ * root-absolute (`/portraits/x.svg`) for readability, but the app is served from
+ * a subpath on GitHub Pages (`base: './'`), so a bare `/portraits/…` would 404.
+ * Prepend `import.meta.env.BASE_URL`; leave absolute URLs (http, data:) alone.
+ */
+function resolvePortrait(src: string): string {
+  if (/^(https?:)?\/\//.test(src) || src.startsWith('data:')) return src;
+  return import.meta.env.BASE_URL + src.replace(/^\//, '');
+}
+
 function hashStyle(id: string): { bg: [string, string]; ink: string } {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
@@ -63,7 +74,7 @@ export default function LeaderPortrait({
   if (leader?.portrait) {
     return (
       <img
-        src={leader.portrait}
+        src={resolvePortrait(leader.portrait)}
         alt={name}
         title={name}
         width={size}
