@@ -46,7 +46,7 @@ export default function Home() {
             </h1>
             <p className="text-sand-100/60 text-sm mt-2 max-w-md">
               A private deck-building &amp; agent-placement companion for owners of the physical game.
-              Hotseat and bots now; async multiplayer later.
+              Play hotseat with bots, or async where each player takes their own seat.
             </p>
 
             {/* Leader gallery */}
@@ -59,6 +59,9 @@ export default function Home() {
             <div className="mt-6 flex items-center gap-4">
               <Link to="/new" className="btn inline-flex items-center gap-1.5 !px-4 !py-2 !text-base">
                 <Icon name="sword" size={16} color="#1c150f" /> Start a new game
+              </Link>
+              <Link to="/async" className="btn-secondary inline-flex items-center !px-4 !py-2 !text-base">
+                Async multiplayer
               </Link>
               <Link to="/classic" className="text-sm text-sand-100/50 hover:text-sand-200 underline">
                 classic engine →

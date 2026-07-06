@@ -155,6 +155,10 @@ export class LocalMockTransport implements ImpGameTransport {
     return { ok: true, cursor: updated.journal.length, snapshot: this.snapshotFrom(updated, next, input.viewerId) };
   }
 
+  async checkout(gameId: string): Promise<StoredImpGame | null> {
+    return this.store.read(gameId);
+  }
+
   async since(gameId: string, sinceCursor: number): Promise<SinceResult | null> {
     const game = this.store.read(gameId);
     if (!game) return null;

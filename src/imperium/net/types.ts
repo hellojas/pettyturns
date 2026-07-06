@@ -144,6 +144,14 @@ export interface ImpGameTransport {
   create(input: CreateGameInput): Promise<{ gameId: string }>;
   /** Current redacted snapshot for a viewer, or null if the game is unknown. */
   snapshot(gameId: string, viewerId: PlayerId | 'SPECTATOR'): Promise<GameSnapshot | null>;
+  /**
+   * Trusted-client handshake: the full stored game (seed + journal) so a client
+   * can replay locally and reuse the offline renderer. A ZERO-TRUST backend
+   * would NOT expose this (shipping the seed leaks shuffle order); such clients
+   * render `snapshot().view` directly instead. The local mock exposes it because
+   * everything already lives on the same device. Null if the game is unknown.
+   */
+  checkout(gameId: string): Promise<StoredImpGame | null>;
   /** Commit an action to the authoritative log (server validates + redacts). */
   submit(input: SubmitInput): Promise<SubmitResult>;
   /** Actions after `sinceCursor`, for reconcile-by-replay; null if unknown. */

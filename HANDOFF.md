@@ -267,8 +267,33 @@ owed) park a `flowResume` continuation via `settle`.
    structurally bad def. A card needing a player choice enqueues a pending
    decision — see the pending-decision section.)
 
-1. **Async multiplayer — SCAFFOLDING DONE; wiring is the remaining step.**
-   The transport seam now exists under `src/imperium/net/` (tests:
+1. **Async multiplayer — PLAYABLE.** Wired end-to-end and verified in the
+   browser (create → reveal → resolve decision → end round → turn hands off →
+   opponent seat plays; redaction, turn-gating, lobby all working).
+   - UI: `/async` lobby (`pages/AsyncLobby.tsx`), `/async/new`
+     (`pages/AsyncNewGame.tsx`, human seats only), `/async/game/:gameId`
+     (`pages/AsyncGame.tsx` — seat picker when no `?seat=`, else the full board
+     reused from hotseat, seat-scoped and turn-gated). Home links to it.
+   - Store (`lib/impStore.ts`): a `mode: 'hotseat' | 'async'` flag. Async adds
+     `createAsyncGame` / `joinAsyncGame` / `refreshAsync`; `dispatch` routes
+     through `activeTransport.submit` (authoritative), adopts the returned
+     journal via `since()`, handles `conflict` by refresh-and-retry-surface,
+     pins `viewingAs`/`localSeat`, disables undo/redo, and polls (1.5s) plus a
+     `storage` listener for opponents' moves. Transport is swappable via
+     `setImpTransport` (tests inject an in-memory mock; a real backend swaps
+     here). Tests: `asyncStore.test.ts` (6).
+   - LIMITATION: the transport is the localStorage-backed `LocalMockTransport`,
+     so "async" is authoritative + seat-scoped **on one device** (separate tabs
+     share the game; the seed is co-located so true hidden-info can't be
+     enforced client-side — that's a mock property, not an architecture flaw).
+   - REMAINING for cross-device: implement `ImpGameTransport` over Supabase
+     (external — user must provision) and `setImpTransport` to it; a zero-trust
+     backend omits `checkout()` (which ships the seed) and clients render
+     `snapshot().view` instead of replaying locally. Optional polish: hide
+     action controls (not just gate pointer events) when it isn't your turn;
+     turn-change push notifications.
+
+   The transport seam lives under `src/imperium/net/` (tests:
    `netTransport.test.ts`), engine untouched:
    - `net/types.ts` — the client contract `ImpGameTransport`
      (`create`/`snapshot`/`submit`/`since`/`subscribe`/`list`/`remove`, all
