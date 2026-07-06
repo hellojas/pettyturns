@@ -410,14 +410,27 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       name: s.name || `Player ${i + 1}`,
       leaderId: s.leaderId,
     }));
-    const { gameId } = await activeTransport.create({ seats, seed, botSeats: [] });
+    let gameId: string;
+    try {
+      ({ gameId } = await activeTransport.create({ seats, seed, botSeats: [] }));
+    } catch (err) {
+      const message = `Could not reach the game server: ${err instanceof Error ? err.message : String(err)}`;
+      set({ lastError: message });
+      throw new Error(message);
+    }
     await get().joinAsyncGame(gameId, 'p1');
     return gameId;
   },
 
   async joinAsyncGame(gameId, seat) {
     stopPolling();
-    const co = await activeTransport.checkout(gameId);
+    let co;
+    try {
+      co = await activeTransport.checkout(gameId);
+    } catch (err) {
+      set({ lastError: `Could not reach the game server: ${err instanceof Error ? err.message : String(err)}` });
+      return false;
+    }
     if (!co || !co.initial.players[seat]) {
       set({ lastError: `Cannot join ${gameId} as ${seat}.` });
       return false;
@@ -444,7 +457,12 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   async refreshAsync() {
     const { gameId, initial, journal, mode } = get();
     if (mode !== 'async' || !gameId || !initial) return;
-    const delta = await activeTransport.since(gameId, journal.length);
+    let delta;
+    try {
+      delta = await activeTransport.since(gameId, journal.length);
+    } catch {
+      return; // transient fetch error; the next poll retries
+    }
     if (!delta || delta.actions.length === 0) return;
     const merged = [...journal, ...delta.actions];
     const state = stateAfter(initial, merged, merged.length);
@@ -463,20 +481,24 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       }
       set({ syncing: true, lastError: null });
       void (async () => {
-        const res = await activeTransport.submit({
-          gameId,
-          viewerId: localSeat,
-          action: { ...action, playerId: localSeat } as Omit<ImpAction, 'at'>,
-          expectedCursor: journal.length,
-        });
-        if (res.ok) {
-          await get().refreshAsync(); // pull the just-appended action(s) authoritatively
-          set({ pending: null, lastError: null, syncing: false });
-        } else if (res.code === 'conflict') {
-          await get().refreshAsync();
-          set({ syncing: false, lastError: 'The game moved on — refreshed to the latest state.' });
-        } else {
-          set({ syncing: false, lastError: res.message });
+        try {
+          const res = await activeTransport.submit({
+            gameId,
+            viewerId: localSeat,
+            action: { ...action, playerId: localSeat } as Omit<ImpAction, 'at'>,
+            expectedCursor: journal.length,
+          });
+          if (res.ok) {
+            await get().refreshAsync(); // pull the just-appended action(s) authoritatively
+            set({ pending: null, lastError: null, syncing: false });
+          } else if (res.code === 'conflict') {
+            await get().refreshAsync();
+            set({ syncing: false, lastError: 'The game moved on — refreshed to the latest state.' });
+          } else {
+            set({ syncing: false, lastError: res.message });
+          }
+        } catch (err) {
+          set({ syncing: false, lastError: err instanceof Error ? err.message : String(err) });
         }
       })();
       return;

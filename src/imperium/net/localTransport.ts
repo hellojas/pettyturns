@@ -1,9 +1,7 @@
 import { createImperiumGame } from '../engine/setup';
-import { impAllowedActions, impApply, impValidate } from '../engine/engine';
-import { stateAfter } from '../engine/replay';
-import { getVisibleImperiumState } from '../engine/visibility';
-import type { ImpAction, ImpGameState, PlayerId } from '../types';
+import type { PlayerId } from '../types';
 import { InMemoryJournalStore } from './journalStore';
+import { buildSnapshot, evaluateSubmit, liveState } from './serverLogic';
 import type {
   CreateGameInput,
   GameSnapshot,
@@ -37,12 +35,6 @@ export interface LocalTransportOptions {
   newId?: () => string;
 }
 
-/** Whoever the engine is waiting on: the front decision's owner, else the turn. */
-function actorOf(state: ImpGameState): PlayerId | null {
-  if (state.phase === 'finished') return null;
-  return state.pendingDecisions[0]?.playerId ?? state.turn;
-}
-
 export class LocalMockTransport implements ImpGameTransport {
   private store: JournalStore;
   private clock: () => string;
@@ -54,25 +46,6 @@ export class LocalMockTransport implements ImpGameTransport {
     this.store = opts.store ?? new InMemoryJournalStore();
     this.clock = opts.clock ?? (() => new Date().toISOString());
     this.newId = opts.newId ?? (() => `g${Math.random().toString(36).slice(2, 10)}`);
-  }
-
-  private live(game: StoredImpGame): ImpGameState {
-    return stateAfter(game.initial, game.journal, game.journal.length);
-  }
-
-  private snapshotFrom(
-    game: StoredImpGame,
-    live: ImpGameState,
-    viewerId: PlayerId | 'SPECTATOR',
-  ): GameSnapshot {
-    return {
-      gameId: game.gameId,
-      cursor: game.journal.length,
-      view: getVisibleImperiumState(live, viewerId),
-      allowed: viewerId === 'SPECTATOR' ? [] : impAllowedActions(live, viewerId),
-      currentActor: actorOf(live),
-      finished: live.phase === 'finished',
-    };
   }
 
   private notify(gameId: string, cursor: number): void {
@@ -105,54 +78,16 @@ export class LocalMockTransport implements ImpGameTransport {
   ): Promise<GameSnapshot | null> {
     const game = this.store.read(gameId);
     if (!game) return null;
-    return this.snapshotFrom(game, this.live(game), viewerId);
+    return buildSnapshot(game, liveState(game), viewerId);
   }
 
   async submit(input: SubmitInput): Promise<SubmitResult> {
     const game = this.store.read(input.gameId);
-    if (!game) {
-      return { ok: false, code: 'no-game', message: 'Unknown game.', cursor: 0 };
-    }
-    const cursor = game.journal.length;
-
-    // Optimistic concurrency: a client that fell behind must resync and retry.
-    if (input.expectedCursor !== cursor) {
-      return {
-        ok: false,
-        code: 'conflict',
-        message: `Out of date: expected cursor ${input.expectedCursor}, server is at ${cursor}.`,
-        cursor,
-      };
-    }
-
-    // Authorization: a client may only act as its own seat.
-    if (input.action.playerId !== input.viewerId) {
-      return { ok: false, code: 'not-your-turn', message: 'You can only act as your own seat.', cursor };
-    }
-
-    const live = this.live(game);
-    if (live.phase === 'finished') {
-      return { ok: false, code: 'game-over', message: 'The game is over.', cursor };
-    }
-
-    const stamped = { ...input.action, at: this.clock() } as ImpAction;
-    const verdict = impValidate(live, stamped);
-    if (!verdict.ok) {
-      // Distinguish "wrong player is up" from a genuinely illegal move so the
-      // client can surface a clearer message / decide whether to resync.
-      const code = actorOf(live) !== input.viewerId ? 'not-your-turn' : 'invalid';
-      return { ok: false, code, message: verdict.message, cursor };
-    }
-
-    const next = impApply(live, stamped);
-    const updated: StoredImpGame = {
-      ...game,
-      journal: [...game.journal, stamped],
-      updatedAt: stamped.at ?? this.clock(),
-    };
-    this.store.write(updated);
-    this.notify(input.gameId, updated.journal.length);
-    return { ok: true, cursor: updated.journal.length, snapshot: this.snapshotFrom(updated, next, input.viewerId) };
+    const outcome = evaluateSubmit(game, input, this.clock());
+    if (!outcome.ok) return outcome.error;
+    this.store.write(outcome.game);
+    this.notify(input.gameId, outcome.game.journal.length);
+    return { ok: true, cursor: outcome.game.journal.length, snapshot: outcome.snapshot };
   }
 
   async checkout(gameId: string): Promise<StoredImpGame | null> {

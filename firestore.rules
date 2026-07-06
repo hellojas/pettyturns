@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// Firestore security rules for pettyturns async multiplayer.
+//
+// Data model (see src/imperium/net/firestoreTransport.ts):
+//   imperiumGames/{gameId} = {
+//     schema: 3,
+//     gameId: string,
+//     initialJson: string,     // JSON seed state (immutable)
+//     journalJson: string,     // JSON append-only action log
+//     cursor: number,          // journal length (monotonic, never shrinks)
+//     botSeats: list,
+//     createdAt: string,       // ISO (immutable)
+//     updatedAt: string,       // ISO
+//     players: list, round: number, phase: string   // denormalised summary
+//   }
+//
+// Trust model: each client validates moves with the game engine inside a
+// Firestore transaction, so these rules enforce STRUCTURE and APPEND-ONLY-ness,
+// not game legality. They require an (anonymous) signed-in session and freeze
+// history — the seed, id, schema and creation time can't change and the journal
+// cursor can only grow. Enforcing full engine legality server-side would need a
+// Cloud Function; these rules stop casual tampering and truncation.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /imperiumGames/{gameId} {
+
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      // A well-formed game document whose id matches its path.
+      function validGame(g) {
+        return g.gameId == gameId
+            && g.schema is int
+            && g.initialJson is string
+            && g.journalJson is string
+            && g.cursor is int
+            && g.botSeats is list
+            && g.createdAt is string
+            && g.updatedAt is string;
+      }
+
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+                    && validGame(request.resource.data)
+                    && request.resource.data.cursor == 0;
+
+      // Update: history is frozen — the seed, id, schema and creation time are
+      // immutable, and the journal cursor may only advance.
+      allow update: if signedIn()
+                    && validGame(request.resource.data)
+                    && request.resource.data.gameId      == resource.data.gameId
+                    && request.resource.data.schema      == resource.data.schema
+                    && request.resource.data.createdAt   == resource.data.createdAt
+                    && request.resource.data.initialJson == resource.data.initialJson
+                    && request.resource.data.cursor      >= resource.data.cursor;
+
+      allow delete: if signedIn();
+    }
+
+    // Everything else is closed.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

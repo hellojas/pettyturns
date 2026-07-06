@@ -24,6 +24,7 @@ export default function AsyncNewGame() {
   ]);
   const [seed, setSeed] = useState('');
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const taken = seats.map((s) => s.leaderId);
   const ready =
@@ -97,12 +98,15 @@ export default function AsyncNewGame() {
           disabled={!ready}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
               const gameId = await createAsyncGame(
                 seats.map((s) => ({ name: s.name, leaderId: s.leaderId })),
                 seed ? Number(seed) : undefined,
               );
               navigate(`/async/game/${gameId}?seat=p1`);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : String(err));
             } finally {
               setBusy(false);
             }
@@ -110,6 +114,12 @@ export default function AsyncNewGame() {
         >
           {busy ? 'Creating…' : 'Create game'}
         </button>
+        {error && (
+          <div className="text-xs text-red-300 border border-red-800/60 rounded p-2 bg-red-950/40">
+            Couldn’t create the game — {error}. Ensure Firestore and Anonymous auth are enabled for this
+            Firebase project (see firestore.rules), or set VITE_USE_FIREBASE=false to play locally.
+          </div>
+        )}
       </div>
     </main>
   );

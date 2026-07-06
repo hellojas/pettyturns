@@ -282,15 +282,22 @@ owed) park a `flowResume` continuation via `settle`.
      `storage` listener for opponents' moves. Transport is swappable via
      `setImpTransport` (tests inject an in-memory mock; a real backend swaps
      here). Tests: `asyncStore.test.ts` (6).
-   - LIMITATION: the transport is the localStorage-backed `LocalMockTransport`,
-     so "async" is authoritative + seat-scoped **on one device** (separate tabs
-     share the game; the seed is co-located so true hidden-info can't be
-     enforced client-side — that's a mock property, not an architecture flaw).
-   - REMAINING for cross-device: implement `ImpGameTransport` over Supabase
-     (external — user must provision) and `setImpTransport` to it; a zero-trust
-     backend omits `checkout()` (which ships the seed) and clients render
-     `snapshot().view` instead of replaying locally. Optional polish: hide
-     action controls (not just gate pointer events) when it isn't your turn;
+   - CROSS-DEVICE BACKEND: Firebase/Firestore is now implemented
+     (`net/firestoreTransport.ts` + `net/firebaseConfig.ts`), wired from
+     `main.tsx` (lazy-loaded so Firebase only bundles when async is enabled;
+     `setImpTransport(new FirestoreTransport())`). One doc per game holds the
+     append-only journal (as JSON strings + denormalised summary); `submit` runs
+     `evaluateSubmit` inside a Firestore `runTransaction` (shared with the mock
+     via `net/serverLogic.ts`); `subscribe` is a live `onSnapshot`. Anonymous
+     auth + `firestore.rules` (append-only, frozen seed) gate access. Falls back
+     to the local mock if Firebase is unreachable or `VITE_USE_FIREBASE=false`.
+     Setup steps (enable Firestore + Anonymous auth + publish rules) are in
+     `FIREBASE_SETUP.md`. NOT verifiable in the sandbox (needs the live project);
+     the local-mock path is browser-verified.
+   - REMAINING: enable Firestore + Anonymous auth in the Firebase console and
+     publish `firestore.rules` (owner action). Optional: move `evaluateSubmit`
+     into a Cloud Function for server-enforced move legality (interface
+     unchanged); hide action controls (not just gate pointer events) off-turn;
      turn-change push notifications.
 
    The transport seam lives under `src/imperium/net/` (tests:

@@ -7,7 +7,14 @@ import type { ImpGameSummary } from '../imperium/net';
 export default function AsyncLobby() {
   const navigate = useNavigate();
   const [games, setGames] = useState<ImpGameSummary[]>([]);
-  const refresh = () => listAsyncGames().then(setGames);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = () =>
+    listAsyncGames()
+      .then((g) => {
+        setGames(g);
+        setError(null);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
 
   useEffect(() => {
     void refresh();
@@ -29,6 +36,12 @@ export default function AsyncLobby() {
         <Link to="/async/new" className="btn inline-block">
           Create async game
         </Link>
+        {error && (
+          <div className="text-xs text-red-300 border border-red-800/60 rounded p-2 bg-red-950/40">
+            Game server unavailable — {error}. Check that Firestore and Anonymous auth are enabled for this
+            Firebase project (see firestore.rules).
+          </div>
+        )}
         <section>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sand-100/50 uppercase text-xs tracking-wide">Games</h2>
