@@ -18,7 +18,16 @@ export type IconName =
   | 'draw'
   | 'vp'
   | 'influence'
-  | 'trash';
+  | 'trash'
+  // --- UI affordances (replace emoji/text glyphs across the app) ---
+  | 'undo'
+  | 'redo'
+  | 'play'
+  | 'close'
+  | 'refresh'
+  | 'back'
+  | 'lock'
+  | 'crown';
 
 /**
  * Canonical tint per icon, aligned to the Dune: Imperium rulebook: the four
@@ -47,6 +56,14 @@ export const ICON_COLORS: Record<IconName, string> = {
   vp: '#e6c34a',
   influence: '#e3bd78',
   trash: '#9c8770',
+  undo: '#cdbfa8',
+  redo: '#cdbfa8',
+  play: '#cdbfa8',
+  close: '#cdbfa8',
+  refresh: '#cdbfa8',
+  back: '#cdbfa8',
+  lock: '#b79bd8',
+  crown: '#e6c34a',
 };
 
 const PATHS: Record<IconName, ReactNode> = {
@@ -186,6 +203,60 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M5 7 h14 l-1.2 13 a1 1 0 0 1-1 0.9 H7.2 a1 1 0 0 1-1-0.9 Z" fill="currentColor" />
       <rect x="4" y="5" width="16" height="2.4" rx="1" fill="currentColor" />
       <rect x="9.5" y="3" width="5" height="2.4" rx="1" fill="currentColor" />
+    </>
+  ),
+
+  // --- UI affordances ---
+  // Undo — counter-clockwise arrow.
+  undo: (
+    <g fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.5 9.5 H14 a5 5 0 0 1 0 10 H8.5" />
+      <path d="M9.5 5.5 L5 9.5 L9.5 13.5" />
+    </g>
+  ),
+  // Redo — clockwise arrow (mirror of undo).
+  redo: (
+    <g fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.5 9.5 H10 a5 5 0 0 0 0 10 H15.5" />
+      <path d="M14.5 5.5 L19 9.5 L14.5 13.5" />
+    </g>
+  ),
+  // Play — solid triangle.
+  play: <path d="M8 5.5 L18.5 12 L8 18.5 Z" fill="currentColor" />,
+  // Close — X.
+  close: (
+    <g stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+      <line x1="6.5" y1="6.5" x2="17.5" y2="17.5" />
+      <line x1="17.5" y1="6.5" x2="6.5" y2="17.5" />
+    </g>
+  ),
+  // Refresh — circular arrow.
+  refresh: (
+    <g fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 6.5 V11 H14.5" />
+      <path d="M18.4 11 A7 7 0 1 0 19 15.5" />
+    </g>
+  ),
+  // Back — leftward arrow.
+  back: (
+    <g fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12" />
+      <path d="M10.5 6.5 L5 12 L10.5 17.5" />
+    </g>
+  ),
+  // Lock — padlock (private log entries).
+  lock: (
+    <>
+      <rect x="5.5" y="10.5" width="13" height="9.5" rx="1.6" fill="currentColor" />
+      <path d="M8 10.5 V8 a4 4 0 0 1 8 0 v2.5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <circle cx="12" cy="14.6" r="1.5" fill="#1a120b" opacity="0.65" />
+    </>
+  ),
+  // Crown — winner marker.
+  crown: (
+    <>
+      <path d="M3.5 8.5 L7.5 13 L12 6 L16.5 13 L20.5 8.5 L18.5 19 H5.5 Z" fill="currentColor" />
+      <rect x="5.5" y="19" width="13" height="2.2" rx="0.6" fill="currentColor" />
     </>
   ),
 };

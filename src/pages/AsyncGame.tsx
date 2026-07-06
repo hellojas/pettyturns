@@ -9,6 +9,7 @@ import ImpMarket from '../components/ImpMarket';
 import ImpPlayerMat from '../components/ImpPlayerMat';
 import LeaderPortrait from '../components/imp/LeaderPortrait';
 import { PLAYER_COLORS } from '../components/imp/visuals';
+import { Icon } from '../components/imp/icons';
 import { getImpTransport, stopAsyncPolling, useImpStore, useImpView } from '../lib/impStore';
 import type { PlayerId } from '../imperium/types';
 
@@ -138,11 +139,11 @@ export default function AsyncGame() {
           <div className="ml-auto flex items-center gap-3">
             {syncing && <span className="text-xs text-sand-100/40">syncing…</span>}
             <button
-              className="btn-secondary !py-0.5 !px-2"
+              className="btn-secondary !py-0.5 !px-2 inline-flex items-center gap-1"
               onClick={() => void refreshAsync()}
               title="Check for opponents' moves now"
             >
-              ↻ Refresh
+              <Icon name="refresh" size={12} /> Refresh
             </button>
           </div>
         </header>

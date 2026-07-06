@@ -19,6 +19,16 @@
   src: url('./assets/fonts/cinzel-700.woff2') format('woff2');
 }
 
+@layer base {
+  /* Keyboard focus is visible app-wide (mouse clicks stay ring-free via
+     :focus-visible). A warm sand ring reads on every dark surface. */
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid #e3bd78;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
 @layer components {
   .panel {
     @apply bg-dusk-800 border border-sand-900/60 rounded-lg p-3;
@@ -42,6 +52,10 @@
 }
 
 @layer utilities {
+  /* Even out multi-line titles so a two-line card name reads balanced. */
+  .text-balance {
+    text-wrap: balance;
+  }
   /* Fine paper/sand grain — a subtle speckle laid over dark surfaces. */
   .tex-grain {
     background-image: radial-gradient(rgba(247, 236, 215, 0.05) 0.5px, transparent 1px);

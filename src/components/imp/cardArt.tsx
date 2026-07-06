@@ -37,17 +37,45 @@ function Backdrop({ uid, accent, suns = true }: MotifProps & { suns?: boolean })
           <stop offset="0%" stopColor="#3a2a19" />
           <stop offset="100%" stopColor="#1a120b" />
         </linearGradient>
+        <radialGradient id={`${uid}-glow`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffdf9e" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#ffdf9e" stopOpacity="0" />
+        </radialGradient>
       </defs>
       <rect x="0" y="0" width={W} height={H} fill={`url(#${uid}-sky)`} />
       {suns && (
         <>
-          <circle cx="90" cy="15" r="7" fill="#f4d78a" opacity="0.85" />
-          <circle cx="102" cy="12" r="4" fill="#f0b45a" opacity="0.7" />
+          {/* twin-sun glow halo, then the two discs */}
+          <circle cx="93" cy="14" r="13" fill={`url(#${uid}-glow)`} />
+          <circle cx="90" cy="15" r="7" fill="#f4d78a" opacity="0.9" />
+          <circle cx="102" cy="12" r="4" fill="#f0b45a" opacity="0.75" />
         </>
       )}
       {/* far + near dune ridges */}
       <path d="M0 40 Q30 30 60 38 T120 34 V56 H0 Z" fill="#2a1d11" opacity="0.9" />
       <path d={`M0 47 Q40 40 74 47 T120 45 V56 H0 Z`} fill={`url(#${uid}-dune)`} />
+      {/* rim-light along the near ridge crest for a touch of dimension */}
+      <path d={`M0 47 Q40 40 74 47 T120 45`} fill="none" stroke="#f6dca6" strokeWidth="0.6" opacity="0.28" />
+    </>
+  );
+}
+
+/** A soft top rim-light + corner vignette layered over any finished motif. */
+function Sheen({ uid }: { uid: string }) {
+  return (
+    <>
+      <defs>
+        <linearGradient id={`${uid}-sheen`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff3dc" stopOpacity="0.16" />
+          <stop offset="22%" stopColor="#fff3dc" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id={`${uid}-vig`} cx="50%" cy="42%" r="75%">
+          <stop offset="60%" stopColor="#000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.34" />
+        </radialGradient>
+      </defs>
+      <rect x="0" y="0" width={W} height={H} fill={`url(#${uid}-sheen)`} />
+      <rect x="0" y="0" width={W} height={H} fill={`url(#${uid}-vig)`} />
     </>
   );
 }
@@ -565,6 +593,7 @@ export function CardArt({
       style={{ display: 'block' }}
     >
       <Motif accent={accent} uid={uid} />
+      <Sheen uid={uid} />
     </svg>
   );
 }
@@ -621,6 +650,7 @@ export function SpaceArt({
       style={{ display: 'block', borderRadius: 6 }}
     >
       <Motif accent={accent} uid={uid} />
+      <Sheen uid={uid} />
     </svg>
   );
 }

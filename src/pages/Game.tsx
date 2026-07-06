@@ -8,6 +8,7 @@ import ImpLog from '../components/ImpLog';
 import ImpMarket from '../components/ImpMarket';
 import ImpPlayerMat from '../components/ImpPlayerMat';
 import LeaderPortrait from '../components/imp/LeaderPortrait';
+import { Icon } from '../components/imp/icons';
 import { useImpStore, useImpView } from '../lib/impStore';
 
 /** Main game screen: players/conflict left, board center, hand/market/log right. */
@@ -75,26 +76,27 @@ export default function Game() {
               </label>
             )}
             {botToMove && view.phase !== 'finished' && (
-              <button className="btn !py-0.5 !px-2" onClick={runBots} title="Let the AI take its turn(s) now">
-                {autoRun ? '▶ Bot thinking…' : '▶ Play bot turn'}
+              <button className="btn !py-0.5 !px-2 inline-flex items-center gap-1" onClick={runBots} title="Let the AI take its turn(s) now">
+                <Icon name="play" size={12} color="#1c150f" />
+                {autoRun ? 'Bot thinking…' : 'Play bot turn'}
               </button>
             )}
             <div className="flex gap-1">
               <button
-                className="btn-secondary !py-0.5 !px-2 disabled:opacity-40"
+                className="btn-secondary !py-0.5 !px-2 inline-flex items-center gap-1 disabled:opacity-40"
                 disabled={!canUndo}
                 onClick={undo}
                 title="Undo the last action"
               >
-                ↶ Undo
+                <Icon name="undo" size={12} /> Undo
               </button>
               <button
-                className="btn-secondary !py-0.5 !px-2 disabled:opacity-40"
+                className="btn-secondary !py-0.5 !px-2 inline-flex items-center gap-1 disabled:opacity-40"
                 disabled={!canRedo}
                 onClick={redo}
                 title="Redo"
               >
-                ↷ Redo
+                <Icon name="redo" size={12} /> Redo
               </button>
             </div>
             <span className="inline-flex items-center gap-1.5 text-xs text-sand-100/40">

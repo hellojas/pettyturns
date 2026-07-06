@@ -7,7 +7,7 @@ export default {
         display: ['Cinzel', 'Georgia', 'ui-serif', 'serif'],
       },
       colors: {
-        // Desert-tabletop palette (placeholder, refine later)
+        // Desert-tabletop palette: warm sand accents over a deep-dusk substrate.
         sand: {
           50: '#fdf8ef',
           100: '#f7ecd7',
@@ -21,8 +21,12 @@ export default {
           900: '#65371f',
         },
         dusk: {
+          700: '#3a2c1f',
+          750: '#332619',
           800: '#2b2118',
+          850: '#231a12',
           900: '#1c150f',
+          950: '#140f0a',
         },
       },
     },

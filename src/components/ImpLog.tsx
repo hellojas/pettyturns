@@ -33,7 +33,7 @@ export default function ImpLog({ view }: { view: ImpVisibleState }) {
             <span className="w-5 shrink-0 text-[9px] text-sand-100/30 pt-[3px] tabular-nums">R{entry.round}</span>
             <Icon name={eventIcon(entry.event)} size={12} className="mt-[2px] shrink-0 opacity-75" />
             <span className={isPrivate ? 'text-purple-300' : 'text-sand-100/80'}>
-              {isPrivate && '🔒 '}
+              {isPrivate && <Icon name="lock" size={10} className="mr-0.5 mb-[1px]" />}
               {entry.text}
             </span>
           </div>

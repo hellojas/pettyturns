@@ -266,7 +266,10 @@ function InfluenceTrack({ faction, view }: { faction: ImpFactionId; view: ImpVis
             ) : isVp ? (
               <Icon name="vp" size={8} color="#e3bd78" title="+1 VP at this level" />
             ) : (
-              <span className="text-[7px] leading-none font-bold" style={{ color: '#f7ecd755' }}>
+              <span
+                className="text-[9px] leading-none font-bold tabular-nums"
+                style={{ color: reached ? '#f0d9a8cc' : '#f7ecd77a' }}
+              >
                 {level}
               </span>
             )}

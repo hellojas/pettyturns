@@ -70,6 +70,41 @@ export default function Home() {
           </div>
         </header>
 
+        {/* How it works */}
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            {
+              icon: 'draw' as const,
+              title: 'Build your deck',
+              body: 'Buy Imperium cards each round to sharpen your engine of spice, coin, and combat.',
+            },
+            {
+              icon: 'landsraad' as const,
+              title: 'Place your agents',
+              body: 'Send agents to board spaces for resources, influence, and troops — timing is everything.',
+            },
+            {
+              icon: 'sword' as const,
+              title: 'Win the conflict',
+              body: 'Commit troops, break alliances, and race rivals to 10 victory points.',
+            },
+          ].map((f) => (
+            <div
+              key={f.title}
+              className="rounded-xl border border-sand-900/60 bg-dusk-850 p-4 hover:border-sand-700/70 transition-colors"
+            >
+              <div
+                className="inline-flex items-center justify-center w-9 h-9 rounded-lg mb-2"
+                style={{ background: '#e3bd7814', boxShadow: 'inset 0 0 0 1px #e3bd7833' }}
+              >
+                <Icon name={f.icon} size={18} />
+              </div>
+              <h3 className="font-display font-semibold text-sand-200 text-sm">{f.title}</h3>
+              <p className="text-xs text-sand-100/55 mt-1 leading-relaxed">{f.body}</p>
+            </div>
+          ))}
+        </section>
+
         {/* Saved games */}
         <section>
           <h2 className="panel-title">Saved games</h2>

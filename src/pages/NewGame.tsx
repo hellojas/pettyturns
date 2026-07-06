@@ -4,6 +4,7 @@ import { IMP_LEADER_LIST } from '../imperium/data/leaders';
 import { useImpStore } from '../lib/impStore';
 import LeaderPortrait from '../components/imp/LeaderPortrait';
 import { PLAYER_COLORS } from '../components/imp/visuals';
+import { Icon } from '../components/imp/icons';
 
 interface SeatDraft {
   name: string;
@@ -58,8 +59,12 @@ export default function NewGame() {
                 Bot
               </label>
               {seats.length > 2 && (
-                <button className="btn-secondary" onClick={() => setSeats(seats.filter((_, j) => j !== i))}>
-                  ✕
+                <button
+                  className="btn-secondary inline-flex items-center"
+                  onClick={() => setSeats(seats.filter((_, j) => j !== i))}
+                  title="Remove this seat"
+                >
+                  <Icon name="close" size={12} />
                 </button>
               )}
             </div>

@@ -85,10 +85,15 @@ export default function ImpCard({
             column down the left edge (wrapping if a card has many). */}
         <div className="relative">
           <CardArt def={def} accent={accent} height={76} className="group-hover:scale-[1.03] transition-transform origin-center" />
-          {/* legibility scrim: darker at the top for the title, mostly clear over the art */}
+          {/* Title scrim: a solid dark band across the top third so the name
+              always reads on its own strip, then clears to show the art below.
+              A soft bottom vignette anchors the art into the card body. */}
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: 'linear-gradient(180deg, #0c0805e6 0%, #0c080559 32%, transparent 55%, #100c0733 100%)' }}
+            style={{
+              background:
+                'linear-gradient(180deg, #0b0704f2 0%, #0b0704e0 26%, #0b070466 46%, transparent 62%, #0b070466 100%)',
+            }}
           />
           {/* Persuasion cost — bright corner tab, top-right */}
           {showCost && def.cost > 0 && (
@@ -116,9 +121,11 @@ export default function ImpCard({
               ))}
             </div>
           )}
-          {/* Name + faction band, inset to the right of the icon rail */}
-          <div className={`absolute top-0.5 right-8 ${def.icons.length ? 'left-[22px]' : 'left-2'}`}>
-            <div className="font-semibold text-[12px] leading-tight text-sand-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">
+          {/* Name + faction band, inset to the right of the icon rail. The name
+              is clamped to two lines so a long title never bleeds down over the
+              illustration; the balanced wrap keeps two-line names even. */}
+          <div className={`absolute top-1 right-8 ${def.icons.length ? 'left-[22px]' : 'left-2'}`}>
+            <div className="text-balance font-display font-semibold text-[12px] leading-[1.05] text-sand-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] line-clamp-2">
               {def.name}
             </div>
             {faction ? (
