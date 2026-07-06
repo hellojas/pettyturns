@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryJournalStore, LocalMockTransport } from '../../imperium/net';
 import {
+  getImpTransport,
   setImpTransport,
   stopAsyncPolling,
   useImpStore,
@@ -75,6 +76,9 @@ describe('async store', () => {
 
   it('refreshAsync pulls an opponent move made directly on the transport', async () => {
     const gameId = await useImpStore.getState().createAsyncGame(SEATS, 7);
+    // Tear down the live subscription so the opponent's out-of-band move stays
+    // invisible until we ask — this isolates the manual reconcile path.
+    stopAsyncPolling();
     // This device is p1; p2 acts through the transport out-of-band (another device).
     // First p1 must act — the opponent p2 only becomes the actor after p1 ends.
     useImpStore.getState().dispatch({ type: 'imp/reveal', playerId: 'p1' });
@@ -83,8 +87,7 @@ describe('async store', () => {
     await vi.waitFor(() => expect(useImpStore.getState().cursor).toBe(2));
 
     // Now p2 is up; simulate p2's device committing a reveal on the shared transport.
-    const t = (await import('../../lib/impStore')).getImpTransport();
-    const res = await t.submit({
+    const res = await getImpTransport().submit({
       gameId,
       viewerId: 'p2',
       action: { type: 'imp/reveal', playerId: 'p2' },
@@ -92,7 +95,7 @@ describe('async store', () => {
     });
     expect(res.ok).toBe(true);
 
-    // p1's client hasn't seen it yet until it refreshes.
+    // With the live subscription torn down, p1's client only sees it on refresh.
     expect(useImpStore.getState().cursor).toBe(2);
     await useImpStore.getState().refreshAsync();
     expect(useImpStore.getState().cursor).toBe(3);
@@ -101,16 +104,44 @@ describe('async store', () => {
 
   it('a stale dispatch conflicts, then refreshes to the latest state', async () => {
     const gameId = await useImpStore.getState().createAsyncGame(SEATS, 7);
-    // Out-of-band, p1 reveals via the transport so the server is at cursor 1,
-    // but our store still thinks it is at cursor 0.
-    const t = (await import('../../lib/impStore')).getImpTransport();
-    await t.submit({ gameId, viewerId: 'p1', action: { type: 'imp/reveal', playerId: 'p1' }, expectedCursor: 0 });
-    expect(useImpStore.getState().cursor).toBe(0);
+    // Out-of-band, p1 reveals via the transport so the server moves to cursor 1.
+    // We do NOT await it: our stale endTurn below is built on cursor 0 before the
+    // live push can catch us up — exactly the optimistic-concurrency race the
+    // server must reject.
+    void getImpTransport().submit({
+      gameId,
+      viewerId: 'p1',
+      action: { type: 'imp/reveal', playerId: 'p1' },
+      expectedCursor: 0,
+    });
 
     // Our stale endTurn should conflict and then reconcile to cursor 1.
     useImpStore.getState().dispatch({ type: 'imp/endTurn', playerId: 'p1' });
+    await vi.waitFor(() => expect(useImpStore.getState().lastError).toMatch(/moved on/i));
     await vi.waitFor(() => expect(useImpStore.getState().cursor).toBe(1));
-    expect(useImpStore.getState().lastError).toMatch(/moved on/i);
+  });
+
+  it('applies an opponent move pushed through the transport subscription', async () => {
+    const gameId = await useImpStore.getState().createAsyncGame(SEATS, 7);
+    // Advance to p2's turn: p1 reveals then ends their turn.
+    useImpStore.getState().dispatch({ type: 'imp/reveal', playerId: 'p1' });
+    await vi.waitFor(() => expect(useImpStore.getState().cursor).toBe(1));
+    useImpStore.getState().dispatch({ type: 'imp/endTurn', playerId: 'p1' });
+    await vi.waitFor(() => expect(useImpStore.getState().cursor).toBe(2));
+
+    // p2's device commits directly on the shared transport. The live
+    // subscription (not a manual refresh, not the slow poll) should carry it to
+    // p1's client on its own.
+    const res = await getImpTransport().submit({
+      gameId,
+      viewerId: 'p2',
+      action: { type: 'imp/reveal', playerId: 'p2' },
+      expectedCursor: 2,
+    });
+    expect(res.ok).toBe(true);
+
+    await vi.waitFor(() => expect(useImpStore.getState().cursor).toBe(3));
+    expect(useImpStore.getState().state?.players.p2.revealed).toBe(true);
   });
 
   it('undo and redo are inert in async mode', async () => {

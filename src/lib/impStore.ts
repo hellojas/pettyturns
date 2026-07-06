@@ -302,20 +302,34 @@ function scheduleBots(): void {
 }
 
 /**
- * Async polling: while an async game is open, periodically pull authoritative
- * actions so opponents' moves appear without a manual refresh. A generation
- * token cancels a stale loop when the game changes or a hotseat game loads. A
- * `storage` listener makes cross-tab updates near-instant (same-device play).
+ * Async sync: while an async game is open, keep the client in step with the
+ * authoritative log through three channels, fastest first:
+ *   1. `transport.subscribe` — a real-time push (Firestore `onSnapshot`, or the
+ *      mock's in-process notify). This is the primary path: an opponent's move
+ *      lands within a round-trip, and it costs one persistent listener rather
+ *      than a read per interval.
+ *   2. A `storage` listener — near-instant cross-tab updates for same-device
+ *      play against the localStorage-backed mock (where an in-process subscribe
+ *      can't cross the tab boundary).
+ *   3. A slow poll — a backstop that recovers if a push is dropped or the
+ *      subscription silently dies (e.g. a transient Firestore disconnect).
+ * A generation token cancels a stale loop when the game changes or a hotseat
+ * game loads; `liveUnsub` tears down the real-time subscription.
  */
-const POLL_MS = 1500;
+const POLL_MS = 15000; // backstop only — real-time push handles the fast path
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let pollGeneration = 0;
 let storageBound = false;
+let liveUnsub: (() => void) | null = null;
 function stopPolling(): void {
   pollGeneration++;
   if (pollTimer) {
     clearTimeout(pollTimer);
     pollTimer = null;
+  }
+  if (liveUnsub) {
+    liveUnsub();
+    liveUnsub = null;
   }
 }
 function onStorage(): void {
@@ -324,11 +338,32 @@ function onStorage(): void {
 }
 function startPolling(): void {
   stopPolling();
+  const gen = pollGeneration;
+  const gameId = useImpStore.getState().gameId;
+
+  // 1. Real-time push. The callback carries the server's cursor; only refresh
+  //    when it's ahead of us, so our own committed moves don't self-trigger.
+  if (gameId) {
+    try {
+      liveUnsub = activeTransport.subscribe(gameId, (cursor) => {
+        if (gen !== pollGeneration) return;
+        const st = useImpStore.getState();
+        if (st.mode === 'async' && st.gameId === gameId && cursor > st.journal.length) {
+          void st.refreshAsync();
+        }
+      });
+    } catch {
+      liveUnsub = null; // a transport without a live channel falls back to poll
+    }
+  }
+
+  // 2. Cross-tab (same-device mock).
   if (typeof window !== 'undefined' && !storageBound) {
     window.addEventListener('storage', onStorage);
     storageBound = true;
   }
-  const gen = pollGeneration;
+
+  // 3. Slow poll backstop.
   const tick = () => {
     if (gen !== pollGeneration) return;
     const st = useImpStore.getState();

@@ -278,10 +278,13 @@ owed) park a `flowResume` continuation via `settle`.
      `createAsyncGame` / `joinAsyncGame` / `refreshAsync`; `dispatch` routes
      through `activeTransport.submit` (authoritative), adopts the returned
      journal via `since()`, handles `conflict` by refresh-and-retry-surface,
-     pins `viewingAs`/`localSeat`, disables undo/redo, and polls (1.5s) plus a
-     `storage` listener for opponents' moves. Transport is swappable via
-     `setImpTransport` (tests inject an in-memory mock; a real backend swaps
-     here). Tests: `asyncStore.test.ts` (6).
+     pins `viewingAs`/`localSeat`, disables undo/redo. Opponents' moves arrive
+     over three channels, fastest first: the transport's real-time
+     `subscribe` (Firestore `onSnapshot` / mock in-process notify) is the
+     primary push; a `storage` listener covers cross-tab same-device mock play;
+     a slow poll (15s) is a backstop for a dropped push. Transport is swappable
+     via `setImpTransport` (tests inject an in-memory mock; a real backend swaps
+     here). Tests: `asyncStore.test.ts` (7).
    - CROSS-DEVICE BACKEND: Firebase/Firestore is now implemented
      (`net/firestoreTransport.ts` + `net/firebaseConfig.ts`), wired from
      `main.tsx` (lazy-loaded so Firebase only bundles when async is enabled;
