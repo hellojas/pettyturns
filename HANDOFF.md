@@ -267,13 +267,33 @@ owed) park a `flowResume` continuation via `settle`.
    structurally bad def. A card needing a player choice enqueues a pending
    decision — see the pending-decision section.)
 
-1. **Async multiplayer.** Store is hotseat + localStorage, now JOURNAL-backed
-   (`{ initial, journal, cursor }`). Seam: persist that journal server-side
-   (Supabase); clients append validated actions and receive their
-   `getVisibleImperiumState` view; the server reconciles/rebuilds by replay
-   (`engine/replay.ts`). Engine needs no changes. NOTE: needs the user to set up
-   Supabase (external), so it can't be fully verified in this sandbox — scope a
-   local mock adapter first.
+1. **Async multiplayer — SCAFFOLDING DONE; wiring is the remaining step.**
+   The transport seam now exists under `src/imperium/net/` (tests:
+   `netTransport.test.ts`), engine untouched:
+   - `net/types.ts` — the client contract `ImpGameTransport`
+     (`create`/`snapshot`/`submit`/`since`/`subscribe`/`list`/`remove`, all
+     async) plus the server-side `JournalStore` persistence contract and the
+     `StoredImpGame` (schema 3: `{ initial, journal, botSeats }`, append-only
+     log) / `GameSnapshot` / `SubmitResult` shapes.
+   - `net/journalStore.ts` — `InMemoryJournalStore` (mock/tests) and
+     `LocalStorageJournalStore` (browser). Both derive listings by replay, never
+     from a stale snapshot.
+   - `net/localTransport.ts` — `LocalMockTransport`: the in-process
+     AUTHORITATIVE server. Owns the journal; validates every submit with the
+     same `impValidate`/`impApply`; redacts via `getVisibleImperiumState`;
+     enforces seat ownership + turn; optimistic concurrency (`expectedCursor` →
+     `conflict`, client resyncs via `since()` and retries — reconcile by
+     replay); notifies `subscribe` listeners on each append. Clock + id injected
+     for deterministic tests.
+
+   REMAINING: (a) point `src/lib/impStore.ts` at an `ImpGameTransport` instead
+   of its inline localStorage `persist`/`loadRecord` (keep hotseat working by
+   defaulting to `LocalMockTransport` + `LocalStorageJournalStore`); the store's
+   `cursor`/undo stays a client concept over the authoritative append-only log.
+   (b) Implement a real `ImpGameTransport` over Supabase (external — needs the
+   user to provision it; the local mock is the drop-in stand-in until then).
+   (c) A lobby/turn-notification UI. The interface is identical for mock and
+   real, so (a)+(c) can land and be verified against the mock before (b).
 2. **`onAgentPlaced` choice-driven passives.** The pending-decision plumbing now
    supports this (a placement passive can enqueue a decision); no leader in the
    current config needs it yet, but the hook is ready.
