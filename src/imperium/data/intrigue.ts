@@ -30,7 +30,12 @@ export const IMP_INTRIGUE_DEFS: Record<IntrigueDefId, IntrigueDef> = {
   // --- Second batch (all VERIFY: names/effects/counts are placeholders) ---
   feint: { id: 'feint', name: 'Feint', kind: 'combat', count: 2, gains: { swords: 2 } },
   tacticalFlanking: { id: 'tacticalFlanking', name: 'Tactical Flanking', kind: 'combat', count: 1, cost: { spice: 2 }, gains: { swords: 4 } },
-  strategicPush: { id: 'strategicPush', name: 'Strategic Push', kind: 'combat', count: 2, gains: { troops: 1 } },
+  // Reinforcement: deploys a troop straight into the conflict you are fighting
+  // (garrison first, then supply). VERIFY count/source against your copy.
+  strategicPush: { id: 'strategicPush', name: 'Strategic Push', kind: 'combat', count: 2, gains: { deployTroops: 1 } },
+  // Removes an enemy troop from the conflict (returns it to their supply); the
+  // play must name a target. VERIFY name/count against your copy.
+  guerrillaRaid: { id: 'guerrillaRaid', name: 'Guerrilla Raid', kind: 'combat', count: 1, gains: { destroyTroops: 1 } },
 
   councilBriefing: { id: 'councilBriefing', name: 'Council Briefing', kind: 'plot', count: 2, gains: { intrigueCards: 1 } },
   reallocateFunds: { id: 'reallocateFunds', name: 'Reallocate Funds', kind: 'plot', count: 2, gains: { solari: 2, water: 1 } },

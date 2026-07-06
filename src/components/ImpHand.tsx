@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { IMP_CARD_DEFS } from '../imperium/data/cards';
 import { IMP_INTRIGUE_DEFS } from '../imperium/data/intrigue';
 import { IMP_SPACES } from '../imperium/data/spaces';
@@ -20,10 +21,16 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
   const pending = useImpStore((s) => s.pending);
   const setPending = useImpStore((s) => s.setPending);
   const dispatch = useImpStore((s) => s.dispatch);
+  // Chosen target per troop-removing combat card (keyed by intrigue instance id).
+  const [combatTargets, setCombatTargets] = useState<Record<string, PlayerId>>({});
   const self = view.hidden.self;
   if (!self) return null;
   const p = view.players[viewingAs];
   const myTurn = view.turn === viewingAs && view.phase === 'playerTurns';
+  // Opponents with troops still committed — the only legal targets to remove from.
+  const oppInConflict = view.playerOrder.filter(
+    (id) => id !== viewingAs && view.players[id].inConflict > 0,
+  );
   const space = pending?.spaceId ? IMP_SPACES[pending.spaceId] : null;
   const pendingDef = pending ? defOf(view, pending.cardId) : null;
 
@@ -144,18 +151,44 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
               const playable =
                 (def.kind === 'plot' && myTurn) ||
                 (def.kind === 'combat' && view.phase === 'combat' && view.turn === viewingAs);
+              const needsTarget = (def.gains?.destroyTroops ?? 0) > 0;
+              const target = combatTargets[intrigueId] ?? oppInConflict[0];
+              const canPlay = playable && (!needsTarget || !!target);
               return (
                 <ImpIntrigueCard
                   key={intrigueId}
                   def={def}
                   footer={
                     playable ? (
-                      <button
-                        className="btn w-full !py-0.5"
-                        onClick={() => dispatch({ type: 'imp/playIntrigue', playerId: viewingAs, intrigueId })}
-                      >
-                        Play
-                      </button>
+                      <div className="space-y-1">
+                        {needsTarget && oppInConflict.length > 0 && (
+                          <select
+                            className="input w-full !py-0.5 !text-xs"
+                            value={target}
+                            onChange={(e) => setCombatTargets({ ...combatTargets, [intrigueId]: e.target.value })}
+                          >
+                            {oppInConflict.map((id) => (
+                              <option key={id} value={id}>
+                                Remove from {view.players[id].name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <button
+                          className="btn w-full !py-0.5"
+                          disabled={!canPlay}
+                          onClick={() =>
+                            dispatch({
+                              type: 'imp/playIntrigue',
+                              playerId: viewingAs,
+                              intrigueId,
+                              targetPlayerId: needsTarget ? target : undefined,
+                            })
+                          }
+                        >
+                          {needsTarget && oppInConflict.length === 0 ? 'No target' : 'Play'}
+                        </button>
+                      </div>
                     ) : undefined
                   }
                 />

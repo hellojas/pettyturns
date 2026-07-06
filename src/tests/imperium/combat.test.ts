@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { combatStrength, impValidate } from '../../imperium/engine/engine';
 import { IMP_CONFLICT_DEFS } from '../../imperium/data/conflicts';
 import type { ImpGameState } from '../../imperium/types';
-import { apply, makeImp, patch, setHand } from './helpers';
+import { apply, giveIntrigue, makeImp, patch, setHand } from './helpers';
+
+/** Drive the combat intrigue window round to a given player. */
+function toWindow(state: ImpGameState, pid: string): ImpGameState {
+  let s = state;
+  let guard = 0;
+  while (s.phase === 'combat' && s.turn !== pid && guard++ < 10) {
+    s = apply(s, { type: 'imp/combatPass', playerId: s.turn! });
+  }
+  return s;
+}
 
 /** Set up a round where both players have committed troops and revealed. */
 function armedRound(troops: { p1: number; p2: number }, swords: { p1: number; p2: number }): ImpGameState {
@@ -94,6 +104,60 @@ describe('combat', () => {
       hidden: { ...s.hidden, p1: { ...s.hidden.p1, intrigue: [ambushId] } },
     };
     expect(impValidate(s, { type: 'imp/playIntrigue', playerId: 'p1', intrigueId: ambushId }).ok).toBe(false);
+  });
+
+  it('a deployTroops combat card reinforces the conflict from the garrison', () => {
+    let s = armedRound({ p1: 1, p2: 1 }, { p1: 0, p2: 0 });
+    s = giveIntrigue(s, 'p1', 'strategicPush'); // combat: deployTroops 1
+    s = patch(s, 'p1', { garrison: 2, supply: 5 });
+    s = toWindow(s, 'p1');
+    const cardId = s.hidden.p1.intrigue.find((i) => s.intrigueById[i].defId === 'strategicPush')!;
+
+    s = apply(s, { type: 'imp/playIntrigue', playerId: 'p1', intrigueId: cardId });
+    expect(s.players.p1.inConflict).toBe(2); // reinforced 1 → 2
+    expect(s.players.p1.garrison).toBe(1); // pulled from the garrison first
+    expect(s.players.p1.supply).toBe(5); // supply untouched while the garrison had troops
+    expect(s.phase).toBe('combat'); // a played combat card reopens the window
+    expect(combatStrength(s, 'p1')).toBe(4);
+  });
+
+  it('a destroyTroops combat card needs a target and removes an opponent troop to supply', () => {
+    let s = armedRound({ p1: 1, p2: 3 }, { p1: 0, p2: 0 }); // p1 loses on raw troops
+    s = giveIntrigue(s, 'p1', 'guerrillaRaid'); // combat: destroyTroops 1
+    s = toWindow(s, 'p1');
+    const cardId = s.hidden.p1.intrigue.find((i) => s.intrigueById[i].defId === 'guerrillaRaid')!;
+
+    // A targetless play is illegal.
+    expect(impValidate(s, { type: 'imp/playIntrigue', playerId: 'p1', intrigueId: cardId })).toMatchObject({
+      ok: false,
+      code: 'target-required',
+    });
+    // As is targeting yourself.
+    expect(
+      impValidate(s, { type: 'imp/playIntrigue', playerId: 'p1', intrigueId: cardId, targetPlayerId: 'p1' }).ok,
+    ).toBe(false);
+
+    const p2SupplyBefore = s.players.p2.supply;
+    s = apply(s, { type: 'imp/playIntrigue', playerId: 'p1', intrigueId: cardId, targetPlayerId: 'p2' });
+    expect(s.players.p2.inConflict).toBe(2); // 3 → 2
+    expect(s.players.p2.supply).toBe(p2SupplyBefore + 1); // returned to supply, not garrison
+    expect(s.phase).toBe('combat');
+  });
+
+  it('removing an opponent’s last troop zeroes their strength even with revealed swords', () => {
+    // p2 reveals 5 swords: 1 troop → strength 7, but 0 once the troop is gone.
+    let s = armedRound({ p1: 2, p2: 1 }, { p1: 0, p2: 5 });
+    expect(combatStrength(s, 'p2')).toBe(7);
+    s = giveIntrigue(s, 'p1', 'guerrillaRaid');
+    s = toWindow(s, 'p1');
+    const cardId = s.hidden.p1.intrigue.find((i) => s.intrigueById[i].defId === 'guerrillaRaid')!;
+    s = apply(s, { type: 'imp/playIntrigue', playerId: 'p1', intrigueId: cardId, targetPlayerId: 'p2' });
+    expect(s.players.p2.inConflict).toBe(0);
+    expect(combatStrength(s, 'p2')).toBe(0); // no troops → no strength, swords don't count
+    // p1 is now the only combatant; passing resolves and p1 takes first place.
+    s = toWindow(s, 'p1');
+    s = apply(s, { type: 'imp/combatPass', playerId: 'p1' });
+    expect(s.players.p1.vp).toBe(1);
   });
 
   it('control rewards persist and pay a bonus at the next round start', () => {

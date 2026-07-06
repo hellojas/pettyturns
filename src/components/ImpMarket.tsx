@@ -12,15 +12,15 @@ export default function ImpMarket({ view, viewingAs }: { view: ImpVisibleState; 
   const p = isPlayer ? view.players[viewingAs] : null;
   const canBuy = !!p && view.turn === viewingAs && p.revealed && !p.turnDone && view.phase === 'playerTurns';
 
-  const CardCell = ({ id, defId, note }: { id: string; defId: string; note?: string }) => {
+  const CardCell = ({ id, defId, note, soldOut }: { id: string; defId: string; note?: string; soldOut?: boolean }) => {
     const def = IMP_CARD_DEFS[defId];
-    const affordable = canBuy && p!.persuasion >= def.cost && def.cost > 0;
-    const tooRich = canBuy && p!.persuasion < def.cost && def.cost > 0;
+    const affordable = canBuy && !soldOut && p!.persuasion >= def.cost && def.cost > 0;
+    const tooRich = canBuy && !soldOut && p!.persuasion < def.cost && def.cost > 0;
     return (
       <ImpCard
         def={def}
         showCost
-        dimmed={tooRich}
+        dimmed={tooRich || soldOut}
         footer={
           <div className="flex items-center gap-1">
             {note && <span className="text-[9px] uppercase tracking-wide text-sand-100/35">{note}</span>}
@@ -53,9 +53,18 @@ export default function ImpMarket({ view, viewingAs }: { view: ImpVisibleState; 
       </div>
       <div className="text-sand-100/50 uppercase tracking-wide pt-1">Reserve</div>
       <div className="grid grid-cols-2 gap-2">
-        {RESERVE_DEF_IDS.filter((d) => IMP_CARD_DEFS[d].cost > 0).map((defId) => (
-          <CardCell key={defId} id={defId} defId={defId} note="unlimited" />
-        ))}
+        {RESERVE_DEF_IDS.filter((d) => IMP_CARD_DEFS[d].cost > 0).map((defId) => {
+          const left = view.reserveSupply[defId] ?? 0;
+          return (
+            <CardCell
+              key={defId}
+              id={defId}
+              defId={defId}
+              soldOut={left <= 0}
+              note={left <= 0 ? 'sold out' : `${left} left`}
+            />
+          );
+        })}
       </div>
       {canBuy && (
         <button

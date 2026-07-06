@@ -3,6 +3,7 @@ import {
   IMP_CARD_DEFS,
   IMPERIUM_DECK_DEFS,
   RESERVE_DEF_IDS,
+  RESERVE_SUPPLY,
   STARTING_DECK,
 } from '../../imperium/data/cards';
 import { IMP_INTRIGUE_DEFS, IMP_INTRIGUE_LIST } from '../../imperium/data/intrigue';
@@ -115,6 +116,16 @@ describe('card pool composition', () => {
     const totalInstances = IMPERIUM_DECK_DEFS.reduce((n, d) => n + d.count, 0);
     expect(totalInstances).toBeGreaterThan(IMP_CONSTANTS.imperiumRowSize);
   });
+
+  it('gives every reserve card a finite, positive stack size', () => {
+    for (const defId of RESERVE_DEF_IDS) {
+      const supply = RESERVE_SUPPLY[defId];
+      expect(Number.isInteger(supply) && supply > 0, `${defId} reserve supply`).toBe(true);
+    }
+    for (const defId of Object.keys(RESERVE_SUPPLY)) {
+      expect(IMP_CARD_DEFS[defId]?.source, `${defId} must be a reserve def`).toBe('reserve');
+    }
+  });
 });
 
 describe('intrigue pool composition', () => {
@@ -131,9 +142,14 @@ describe('intrigue pool composition', () => {
   it('combat cards affect combat and endgame cards score VP', () => {
     for (const def of IMP_INTRIGUE_LIST) {
       if (def.kind === 'combat') {
+        const combatEffect =
+          (def.gains?.swords ?? 0) +
+          (def.gains?.troops ?? 0) +
+          (def.gains?.deployTroops ?? 0) +
+          (def.gains?.destroyTroops ?? 0);
         expect(
-          (def.gains?.swords ?? 0) + (def.gains?.troops ?? 0),
-          `${def.id} combat card should add swords or troops`,
+          combatEffect,
+          `${def.id} combat card should add swords/troops or move troops in the conflict`,
         ).toBeGreaterThanOrEqual(1);
       }
       if (def.kind === 'endgame') {

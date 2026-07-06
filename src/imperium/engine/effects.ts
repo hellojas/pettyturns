@@ -290,6 +290,28 @@ export function applyGains(
   if (gains.persuasion) next = patchPlayer(next, pid, { persuasion: p().persuasion + gains.persuasion });
   if (gains.swords) next = patchPlayer(next, pid, { swords: p().swords + gains.swords });
 
+  if (gains.deployTroops) {
+    // Reinforce the current conflict: pull from the garrison first, then the
+    // supply, straight into the conflict. (`destroyTroops` needs a target and is
+    // resolved in the intrigue handler, not here.)
+    const pp = p();
+    const fromGarrison = Math.min(gains.deployTroops, pp.garrison);
+    const fromSupply = Math.min(gains.deployTroops - fromGarrison, pp.supply);
+    const deployed = fromGarrison + fromSupply;
+    if (deployed > 0) {
+      next = patchPlayer(next, pid, {
+        garrison: pp.garrison - fromGarrison,
+        supply: pp.supply - fromSupply,
+        inConflict: pp.inConflict + deployed,
+      });
+      next = impLog(next, {
+        event: 'troops.deployed',
+        text: `${p().name} deploys ${deployed} troop(s) to the conflict.`,
+        data: { deploy: deployed, via: 'card' },
+      });
+    }
+  }
+
   if (gains.trashCards) {
     // Optional: the player picks which card(s) to trash, or declines.
     const hidden = next.hidden[pid];
@@ -358,6 +380,8 @@ export function applyGains(
 export function trashOneCard(state: ImpGameState, pid: PlayerId, cardId: CardId): ImpGameState {
   const hidden = state.hidden[pid];
   if (!hidden.hand.includes(cardId) && !hidden.discard.includes(cardId)) return state;
+  const defId = state.cardsById[cardId]?.defId;
+  const isReserve = IMP_CARD_DEFS[defId]?.source === 'reserve';
   let next: ImpGameState = {
     ...state,
     hidden: {
@@ -366,13 +390,20 @@ export function trashOneCard(state: ImpGameState, pid: PlayerId, cardId: CardId)
         ...hidden,
         hand: hidden.hand.filter((c) => c !== cardId),
         discard: hidden.discard.filter((c) => c !== cardId),
-        trashed: [...hidden.trashed, cardId],
+        // A trashed Reserve card returns to its Reserve stack; any other trashed
+        // card leaves the game for good.
+        trashed: isReserve ? hidden.trashed : [...hidden.trashed, cardId],
       },
     },
   };
+  if (isReserve && next.reserveSupply[defId] !== undefined) {
+    next = { ...next, reserveSupply: { ...next.reserveSupply, [defId]: next.reserveSupply[defId] + 1 } };
+  }
   next = impLog(next, {
     event: 'card.trashed',
-    text: `${next.players[pid].name} trashes a card from their deck.`,
+    text: isReserve
+      ? `${next.players[pid].name} trashes a Reserve card, returning it to its stack.`
+      : `${next.players[pid].name} trashes a card from their deck.`,
     data: { cardId },
   });
   return next;
@@ -407,11 +438,25 @@ export function fireLeaderHook(
 export function acquireCard(state: ImpGameState, pid: PlayerId, defId: CardDefId): ImpGameState {
   const def = IMP_CARD_DEFS[defId];
   if (!def) throw new Error(`unknown card def '${defId}'`);
+  // Reserve cards are a limited stack: a depleted reserve grants nothing (a
+  // paid purchase is blocked earlier in validation, so this only guards the
+  // free-grant path, e.g. the Foldspace board space).
+  const tracked = def.source === 'reserve' && state.reserveSupply[defId] !== undefined;
+  if (tracked && state.reserveSupply[defId] <= 0) {
+    return impLog(state, {
+      event: 'reserve.empty',
+      text: `The ${def.name} reserve is empty — no card to acquire.`,
+      data: { defId },
+    });
+  }
   const serial = Object.keys(state.cardsById).filter((id) => state.cardsById[id].defId === defId).length + 1;
   const id = `${defId}+${serial}`;
   let next: ImpGameState = {
     ...state,
     cardsById: { ...state.cardsById, [id]: { id, defId } },
+    reserveSupply: tracked
+      ? { ...state.reserveSupply, [defId]: state.reserveSupply[defId] - 1 }
+      : state.reserveSupply,
     hidden: {
       ...state.hidden,
       [pid]: { ...state.hidden[pid], discard: [...state.hidden[pid].discard, id] },
