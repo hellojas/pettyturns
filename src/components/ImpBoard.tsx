@@ -204,17 +204,17 @@ function SpaceTile({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start gap-1.5">
-            <span className="font-semibold text-[12px] leading-[1.1] text-sand-100 flex-1 min-w-0">{space.name}</span>
+          {/* Name + kind badge share a wrapping row: when the tile is too narrow
+              the badge drops to its own line instead of overlapping the name. */}
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span className="font-semibold text-[12px] leading-[1.15] text-sand-100">{space.name}</span>
             {kind && (
-              <span className="shrink-0 -mt-px">
-                <KindBadge
-                  kind={kind}
-                  bonus={bonus}
-                  controllerName={controller ? view.players[controller].name : undefined}
-                  controllerColor={controller ? PLAYER_COLORS[controllerIdx % 4] : undefined}
-                />
-              </span>
+              <KindBadge
+                kind={kind}
+                bonus={bonus}
+                controllerName={controller ? view.players[controller].name : undefined}
+                controllerColor={controller ? PLAYER_COLORS[controllerIdx % 4] : undefined}
+              />
             )}
           </div>
           <EffectLine costs={costs} gains={gains} space={space} />
