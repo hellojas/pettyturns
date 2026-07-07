@@ -522,6 +522,86 @@ const desert: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
   </>
 );
 
+const fortress: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
+  <>
+    <Backdrop uid={uid} accent={accent} suns={false} />
+    <circle cx="60" cy="16" r="10" fill="#f4d78a" opacity="0.28" />
+    {/* Harkonnen keep — a squat, battlemented stronghold */}
+    <g fill="#100b07">
+      <path d="M28 56 V30 h8 v-6 h6 v6 h10 v-11 h6 v11 h10 v-6 h6 v6 h8 V56 Z" />
+    </g>
+    <g {...ink(uid)} opacity="0.9">
+      <path d="M32 56 V32 h6 v-5 h5 v5 h9 v-10 h5 v10 h9 v-5 h5 v5 h6 V56 Z" />
+    </g>
+    {/* iron gate + torchlight */}
+    <path d="M54 56 V45 a6 6 0 0 1 12 0 V56 Z" fill="#0b0705" />
+    <g fill="#e0604f" opacity="0.85">
+      <circle cx="42" cy="39" r="1.4" />
+      <circle cx="78" cy="39" r="1.4" />
+    </g>
+  </>
+);
+
+const station: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
+  <>
+    <Backdrop uid={uid} accent={accent} suns={false} />
+    <g fill="#f4e8c8">
+      {[[24, 14], [40, 10], [92, 12], [104, 20], [70, 8]].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={i % 2 ? 1.1 : 0.8} opacity="0.85" />
+      ))}
+    </g>
+    {/* observatory dome + open slit */}
+    <g {...ink(uid)} opacity="0.92">
+      <path d="M40 44 a20 13 0 0 1 40 0 Z" />
+      <rect x="38" y="44" width="44" height="12" />
+    </g>
+    <path d="M58 44 L60 28 L62 44 Z" fill="#0b0705" />
+    {/* telescope beam to a bright star */}
+    <g stroke="#8fd0ef" strokeWidth="1.4" opacity="0.85">
+      <line x1="60" y1="33" x2="74" y2="20" />
+    </g>
+    <circle cx="74" cy="20" r="2" fill="#8fd0ef" />
+    {/* dish antenna */}
+    <path d="M40 30 a5 5 0 0 1 9 0 Z" fill="none" stroke={accent} strokeWidth="1.2" opacity="0.7" />
+    <line x1="44.5" y1="30" x2="46" y2="44" stroke={accent} strokeWidth="1.3" opacity="0.7" />
+  </>
+);
+
+const basin: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
+  <>
+    <Backdrop uid={uid} accent={accent} />
+    {/* a scooped dune bowl with spice pooled in the hollow */}
+    <path d="M8 40 Q60 66 112 40 L112 56 L8 56 Z" fill="#170f09" />
+    <path d="M18 43 Q60 62 102 43" fill="none" stroke={accent} strokeWidth="2" opacity="0.5" />
+    <ellipse cx="60" cy="50" rx="30" ry="5.5" fill={accent} opacity="0.6" />
+    <g fill="#f7e6b0" opacity="0.9">
+      {[[48, 50], [60, 51], [72, 50], [54, 52], [66, 52]].map(([x, y], i) => (
+        <path key={i} d={`M${x} ${y - 1.6} l0.9 1.6 l-0.9 1.6 l-0.9 -1.6 Z`} />
+      ))}
+    </g>
+  </>
+);
+
+const oratory: (p: MotifProps) => JSX.Element = ({ accent, uid }) => (
+  <>
+    <Backdrop uid={uid} accent={accent} suns={false} />
+    {/* orator at a podium, addressing the Landsraad */}
+    <g fill="#120c07">
+      <circle cx="60" cy="30" r="4.2" />
+      <path d="M52 41 C52 34 56 33 60 33 C64 33 68 34 68 41 Z" />
+    </g>
+    <g {...ink(uid)} opacity="0.92">
+      <path d="M52 56 V41 h16 v15 Z" />
+      <rect x="47" y="39" width="26" height="3" rx="1" />
+    </g>
+    {/* voice carrying */}
+    <g stroke="#f4d78a" strokeWidth="1.2" fill="none" opacity="0.6">
+      <path d="M72 27 q4 5 0 10" />
+      <path d="M77 24 q7 8 0 16" />
+    </g>
+  </>
+);
+
 // ---------------------------------------------------------------------------
 
 const MOTIFS = {
@@ -542,6 +622,10 @@ const MOTIFS = {
   spy,
   water,
   desert,
+  fortress,
+  station,
+  basin,
+  oratory,
 } as const;
 
 export type MotifName = keyof typeof MOTIFS;
@@ -653,15 +737,15 @@ const SPACE_ART: Partial<Record<SpaceId, MotifName>> = {
   mentat: 'mentat',
   swordmaster: 'blade',
   rallyTroops: 'warrior',
-  hallOfOratory: 'banner',
+  hallOfOratory: 'oratory',
   secureContract: 'coins',
   sellMelange: 'spice',
   arrakeen: 'city',
-  carthag: 'city',
-  researchStation: 'city',
+  carthag: 'fortress',
+  researchStation: 'station',
   sietchTabr: 'sietch',
   imperialBasin: 'spice',
-  haggaBasin: 'spice',
+  haggaBasin: 'basin',
   theGreatFlat: 'worm',
 };
 
