@@ -18,7 +18,40 @@ own feature branch to match; never force master.)
 
 - Latest work on branch `claude/dune-rules-engine-u4e8vz`; `master` is
   fast-forwarded to match (both even after this handoff commit).
-- `npm test` → **339 passing** (27 files). `npx tsc --noEmit` clean. `npm run build` clean.
+- `npm test` → **464 passing** (36 files). `npx tsc --noEmit` clean. `npm run build` clean.
+
+### Visual polish, turn notifications & feature backlog — DONE (this session)
+
+The former `HANDOFF_POLISH.md` backlog is implemented and that file removed:
+- **Polish:** winner celebration (confetti + gold glow, `imp/WinnerCelebration.tsx`),
+  card hover-preview zoom (`imp/HoverPreview.tsx`, portal clone), mobile board
+  horizontal-scroll + single-column stack, persistent seat-color legend + unified
+  `PLAYER_COLORS` (fixed the `ImpGameOver` straggler), deck/discard piles on the
+  mat (`imp/DeckPiles.tsx`), conflict-resolution flash (`CombatFlash` in
+  `ImpBoard`), spice-blow worm sweep (`imp/WormSweep.tsx`), loading skeletons
+  (`imp/Skeleton.tsx`), icon+rules cheat-sheet with live rule values
+  (`imp/ImpLegend.tsx`, opened by the header "? Key"), global `:focus-visible`
+  ring + icon-button aria-labels. All new motion is reduced-motion-guarded in
+  `index.css`.
+- **Turn notifications** (`imp/useTurnNotifications.ts`, wired in `AsyncGame`):
+  tab title + favicon badge (always), opt-in Web Notification + WebAudio chime on
+  the false→true turn edge while the tab is hidden. Server push/email when the app
+  is closed remains out of scope (needs Cloud Functions + FCM).
+- **Features:** rematch (`store.rematch()` → same seats/leaders/bots), move-history
+  replay scrubber (`ImpReplayBar.tsx` over `stateAfter`), async chat (optional
+  transport methods + mock/Firestore + `ImpChat.tsx`; `chatEnabled()` gates the
+  UI), seat↔identity binding (`StoredImpGame.seatOwners` + `evaluateSubmit`
+  enforcement, `SubmitInput.identity` from a per-device uid; bot seats exempt;
+  airtight cross-device enforcement still needs the deferred Cloud Function —
+  the client transaction binds honest clients today), bots in async
+  (`store.stepAsyncBot()` + `scheduleAsyncBots`, any client steps a bot seat;
+  optimistic concurrency dedupes races), PWA (`public/manifest.webmanifest` +
+  `public/sw.js` offline shell cache, registered in `main.tsx` in PROD only),
+  in-game VERIFY rule values (in `ImpLegend`). Tests: `seatOwners.test.ts`,
+  `netChat.test.ts`, `asyncExtras.test.ts` (bots/rematch/chat).
+- **Still deferred (owner/live-backend):** server-side redaction, server-enforced
+  seat identity + chat authorship (Cloud Function), and app-closed push. The
+  Firestore chat subcollection rule is in `firestore.rules` (owner publishes).
 - HANDOFF gap #1 (leader passives) is DONE and merged.
 - **Graphical board + card visuals — DONE** (landed via a concurrent session).
 - **Bot auto-run + combat intrigue — DONE.** Bot seats now play themselves:
@@ -226,7 +259,7 @@ ARCHITECTURE.md          layer diagram + invariants (written for classic; the
 
 ## Commands
 
-`npm test` (136 tests) · `npx tsc --noEmit` (clean) · `npm run dev` ·
+`npm test` (464 tests) · `npx tsc --noEmit` (clean) · `npm run dev` ·
 `npm run build`. Browser check: Playwright via `playwright-core` +
 executablePath `/opt/pw-browsers/chromium`, args `['--no-sandbox']`. Write the
 drive script to a file INSIDE the repo root (ESM resolves `playwright-core`

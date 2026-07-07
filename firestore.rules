@@ -60,6 +60,20 @@ service cloud.firestore {
                     && request.resource.data.cursor      >= resource.data.cursor;
 
       allow delete: if signedIn();
+
+      // Side-channel chat: one document per message, append-only. Any signed-in
+      // session may read the feed and add a message; existing messages are
+      // immutable. (Seat identity in `seat` is advisory here — airtight
+      // authorship, like full move legality, needs the deferred Cloud Function.)
+      match /chat/{msgId} {
+        allow read:   if signedIn();
+        allow create: if signedIn()
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() <= 500
+                      && request.resource.data.name is string
+                      && request.resource.data.at is string;
+        allow update, delete: if false;
+      }
     }
 
     // Everything else is closed.

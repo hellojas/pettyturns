@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* Visible keyboard focus on every interactive element — board tiles, cards,
+     buttons, inputs — without showing a ring on mouse clicks. `:where()` keeps
+     specificity at 0 so component styles still win. */
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid #e3bd78;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
 /* Cinzel (SIL OFL 1.1) — bundled for offline/Pages use; see src/assets/fonts/OFL.txt.
    Referenced relatively so Vite fingerprints it and rewrites the URL base-safely. */
 @font-face {
@@ -30,12 +41,19 @@
 }
 
 @layer components {
+  /* A raised surface: a subtle vertical sheen, a hairline top highlight and a
+     soft drop shadow lift panels off the darker page so the UI reads as layered
+     cards rather than one flat brown wash. */
   .panel {
-    @apply bg-dusk-800 border border-sand-900/60 rounded-lg p-3;
+    @apply border rounded-lg p-3;
+    border-color: rgba(123, 66, 34, 0.4);
+    background: linear-gradient(180deg, #2d2318, #221912);
+    box-shadow: inset 0 1px 0 rgba(255, 241, 214, 0.05), 0 4px 12px -5px rgba(0, 0, 0, 0.6);
   }
   .panel-title {
     font-family: 'Cinzel', Georgia, ui-serif, serif;
-    @apply text-xs font-bold uppercase tracking-wider text-sand-100/55 mb-2;
+    @apply text-xs font-bold uppercase tracking-wider text-sand-100/55 mb-2 pb-1.5;
+    border-bottom: 1px solid rgba(247, 236, 215, 0.07);
   }
   .btn {
     @apply bg-sand-500 text-dusk-900 font-semibold text-sm px-3 py-1.5 rounded
@@ -52,6 +70,13 @@
 }
 
 @layer utilities {
+  /* The page ground: a warm centre falling to a faintly cool, deep edge. The
+     slight cool cast at the margins makes the warm sand panels read warmer and
+     lift, without breaking the desert palette. */
+  .bg-arrakis-night {
+    background:
+      radial-gradient(150% 105% at 50% -12%, #1e150d 0%, #140e09 52%, #0f0b0f 100%);
+  }
   /* Even out multi-line titles so a two-line card name reads balanced. */
   .text-balance {
     text-wrap: balance;
@@ -92,6 +117,36 @@
   .anim-turn {
     animation: imp-turn 2.6s ease-in-out infinite;
   }
+  /* A skeleton loading sweep (desert-palette shimmer). */
+  .anim-shimmer {
+    background: linear-gradient(100deg, #241b1300 20%, #e3bd7818 38%, #e3bd7818 42%, #241b1300 60%);
+    background-size: 220% 100%;
+    animation: imp-shimmer 1.5s ease-in-out infinite;
+  }
+  /* A winner's portrait glow on the results screen. */
+  .anim-win-glow {
+    animation: imp-win-glow 2.8s ease-in-out infinite;
+  }
+  /* One falling spice-gold confetti flake (per-flake vars set inline). */
+  .anim-confetti {
+    animation: imp-confetti var(--fall, 2.4s) linear var(--delay, 0s) both;
+  }
+  /* A one-shot pop+rise for a revealed row / breakdown line. */
+  .anim-rise {
+    animation: imp-rise 0.5s cubic-bezier(0.2, 1, 0.4, 1) var(--delay, 0s) both;
+  }
+  /* A hover/focus card preview snapping into view. */
+  .anim-zoom-in {
+    animation: imp-zoom-in 0.14s ease-out both;
+  }
+  /* A sandworm sweeping once across the desert on a spice event. */
+  .anim-worm {
+    animation: imp-worm 1.8s cubic-bezier(0.4, 0, 0.5, 1) both;
+  }
+  /* A reward chip floating toward its winner after a conflict. */
+  .anim-reward-float {
+    animation: imp-reward-float 1.1s ease-out both;
+  }
 }
 
 @keyframes imp-drop {
@@ -112,7 +167,45 @@
   0%, 100% { box-shadow: inset 0 0 0 1px #e3bd7822, 0 0 0 0 #e3bd7800; }
   50% { box-shadow: inset 0 0 0 1px #e3bd7855, 0 0 14px -2px #e3bd7855; }
 }
+@keyframes imp-shimmer {
+  0% { background-position: 180% 0; }
+  100% { background-position: -80% 0; }
+}
+@keyframes imp-win-glow {
+  0%, 100% { box-shadow: 0 0 0 2px #f2c94c66, 0 0 18px -2px #f2c94c88; }
+  50% { box-shadow: 0 0 0 2px #f2c94caa, 0 0 34px 2px #f2c94ccc; }
+}
+@keyframes imp-confetti {
+  0% { transform: translateY(-12%) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  100% { transform: translateY(320px) rotate(var(--spin, 420deg)); opacity: 0; }
+}
+@keyframes imp-rise {
+  0% { transform: translateY(6px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes imp-zoom-in {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes imp-worm {
+  0% { transform: translateX(-14%) translateY(6px) scaleX(-1); opacity: 0; }
+  15% { opacity: 0.9; }
+  85% { opacity: 0.9; }
+  100% { transform: translateX(114%) translateY(-4px) scaleX(-1); opacity: 0; }
+}
+@keyframes imp-reward-float {
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-26px) scale(0.82); opacity: 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-drop, .anim-pulse, .anim-flash, .anim-turn { animation: none !important; }
+  .anim-drop, .anim-pulse, .anim-flash, .anim-turn, .anim-shimmer, .anim-win-glow,
+  .anim-confetti, .anim-rise, .anim-zoom-in, .anim-worm, .anim-reward-float {
+    animation: none !important;
+  }
+  /* Reduced-motion fallbacks: keep the end-state visible, drop the movement. */
+  .anim-rise, .anim-zoom-in { opacity: 1 !important; transform: none !important; }
+  .anim-confetti { display: none !important; }
 }

@@ -26,13 +26,14 @@ export default function VpTrack({ view }: { view: ImpVisibleState }) {
         </span>
       </div>
 
-      <div className="relative h-1.5 rounded-full" style={{ background: '#00000055' }}>
+      <div className="relative h-2.5 rounded-full" style={{ background: '#00000066', boxShadow: 'inset 0 1px 2px #000a' }}>
         {/* gold fill up to the current leader */}
         <div
           className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500"
           style={{
             width: `${(Math.max(0, ...order.map((p) => view.players[p].vp)) / target) * 100}%`,
-            background: 'linear-gradient(90deg, #cd8630, #f2c94c)',
+            background: 'linear-gradient(90deg, #b56b26, #f2c94c)',
+            boxShadow: 'inset 0 1px 0 #ffffff55, 0 0 8px -1px #f2c94c66',
           }}
         />
         {/* tick marks + labels */}

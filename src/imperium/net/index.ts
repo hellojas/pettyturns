@@ -6,6 +6,8 @@
  * backend implements `ImpGameTransport` and drops in with no engine/UI changes.
  */
 export type {
+  ChatMessage,
+  ChatSinceResult,
   CreateGameInput,
   GameSnapshot,
   ImpGameSummary,

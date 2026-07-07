@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { IMP_SPACE_LIST, IMP_SPACES } from '../imperium/data/spaces';
 import { IMP_CONFLICT_DEFS } from '../imperium/data/conflicts';
 import { IMP_CONSTANTS } from '../imperium/data/constants';
@@ -20,6 +21,7 @@ import { SpaceArt } from './imp/cardArt';
 import VpTrack from './imp/VpTrack';
 import LeaderPortrait from './imp/LeaderPortrait';
 import { FlashValue } from './imp/motion';
+import WormSweep from './imp/WormSweep';
 
 const { influenceMax, allianceLevel } = IMP_CONSTANTS;
 const VP_LEVELS: number[] = [...IMP_CONSTANTS.influenceVpLevels];
@@ -391,6 +393,7 @@ function SurfaceBand({
   return (
     <div className="relative overflow-hidden p-2.5" style={{ background: tint }}>
       <RegionBackdrop scene={scene} color={meta.accent} opacity={0.4} />
+      {group === 'desert' && <WormSweep view={view} />}
       <div className="relative flex items-center gap-1.5 px-0.5 mb-2">
         <Icon name={meta.icon} size={15} />
         <span className="font-display text-[12px] font-bold tracking-wide leading-none" style={{ color: meta.accent }}>{meta.label}</span>
@@ -441,6 +444,84 @@ function CombatantRow({ pid, view, strength, maxStrength, leading }: {
   );
 }
 
+/**
+ * A one-shot "conflict resolved" moment: when a fresh burst of `combat.reward`
+ * log entries appears, it briefly overlays the hero with each winner, their
+ * placement, and the reward they took. Self-contained and reduced-motion-guarded
+ * (the `.anim-rise` entrance is disabled → it just appears then dismisses).
+ */
+function CombatFlash({
+  view,
+  conflict,
+}: {
+  view: ImpVisibleState;
+  conflict: (typeof IMP_CONFLICT_DEFS)[string] | null;
+}) {
+  const rewards = view.log.filter((e) => e.event === 'combat.reward');
+  const latestRound = rewards.length ? Math.max(...rewards.map((e) => e.round)) : null;
+  const latest = latestRound != null ? rewards.filter((e) => e.round === latestRound) : [];
+  const key = latest.length ? Math.max(...latest.map((e) => e.seq)) : null;
+  const seen = useRef<number | null>(key);
+  const [show, setShow] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (key != null && key !== seen.current) {
+      seen.current = key;
+      setShow(key);
+      const t = setTimeout(() => setShow(null), 2600);
+      return () => clearTimeout(t);
+    }
+  }, [key]);
+
+  if (show == null || latest.length === 0) return null;
+  const ordinal = (n: number) => (n === 1 ? '1st' : n === 2 ? '2nd' : '3rd');
+  return (
+    <div className="absolute inset-0 z-30 flex items-center justify-center p-3 pointer-events-none" aria-hidden>
+      <div
+        className="anim-rise rounded-xl px-4 py-3 text-center max-w-full"
+        style={{ background: '#17110bee', border: '1px solid #7a5a2488', boxShadow: '0 14px 34px -12px #000' }}
+      >
+        <div className="text-[11px] uppercase tracking-[0.2em] text-amber-200/85 mb-2 inline-flex items-center gap-1">
+          <Icon name="sword" size={13} /> Conflict resolved
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {latest
+            .slice()
+            .sort((a, b) => Number(a.data?.place) - Number(b.data?.place))
+            .map((e) => {
+              const pid = String(e.data?.pid);
+              const place = Number(e.data?.place);
+              const idx = view.playerOrder.indexOf(pid);
+              const reward = conflict?.rewards.find((r) => r.place === place);
+              return (
+                <div key={e.seq} className="flex items-center gap-2">
+                  {idx >= 0 && (
+                    <LeaderPortrait
+                      leaderId={view.players[pid].leaderId}
+                      size={20}
+                      ring={PLAYER_COLORS[idx % 4]}
+                      className="!rounded-full"
+                    />
+                  )}
+                  <span className="text-[11px] font-semibold text-sand-100 truncate max-w-[110px]">
+                    {idx >= 0 ? view.players[pid].name : pid}
+                  </span>
+                  <span
+                    className="text-[10px] font-bold px-1 rounded"
+                    style={{ color: place === 1 ? '#f2c94c' : '#cdbfa8', background: place === 1 ? '#f2c94c1f' : '#ffffff10' }}
+                  >
+                    {ordinal(place)}
+                  </span>
+                  {reward && <ChipRow chips={gainsChips(reward.gains)} />}
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** The board's hero: the round's conflict, raised, with a tier-graded top edge,
  *  a leader-takes-it reward ladder, and live committed strengths. */
 function ConflictHero({ view, viewingAs, full, onPass }: {
@@ -466,14 +547,33 @@ function ConflictHero({ view, viewingAs, full, onPass }: {
       }}
     >
       <span className="block h-[5px] w-full shrink-0" style={{ background: tierEdge }} aria-hidden />
-      {/* faint battlefield backdrop */}
+      <CombatFlash view={view} conflict={conflict} />
+      {/* Battlefield backdrop: a warm glow, dune ridges, and a crossed-kindjal
+          clash emblem behind the content — subtle enough to keep text legible. */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <g stroke="#e0a52b" strokeWidth="0.5" fill="none" opacity="0.14">
-          <circle cx="24" cy="34" r="12" /><circle cx="76" cy="34" r="12" />
-          <circle cx="24" cy="74" r="12" /><circle cx="76" cy="74" r="12" />
-        </g>
-        <g stroke="#d94f3d" strokeWidth="2.4" strokeLinecap="round" opacity="0.12">
-          <line x1="30" y1="82" x2="72" y2="28" /><line x1="70" y1="82" x2="28" y2="28" />
+        <defs>
+          <radialGradient id="ch-glow" cx="50%" cy="6%" r="62%">
+            <stop offset="0%" stopColor="#f0b45a" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#f0b45a" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="ch-blade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f4e2b0" />
+            <stop offset="100%" stopColor="#b98a3a" />
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#ch-glow)" />
+        <path d="M0 72 Q28 63 55 70 T100 66 V100 H0 Z" fill="#2a1c10" opacity="0.5" />
+        <path d="M0 84 Q34 77 62 84 T100 80 V100 H0 Z" fill="#160f08" opacity="0.72" />
+        <g opacity="0.16" transform="translate(50 52)">
+          {[36, -36].map((deg, i) => (
+            <g key={i} transform={`rotate(${deg})`}>
+              <path d="M0 -34 L2.6 -27 L2 12 L-2 12 L-2.6 -27 Z" fill="url(#ch-blade)" />
+              <path d="M0 -32 L0.8 -27 L0.5 10 L-0.5 10 L-0.8 -27 Z" fill="#fff" opacity="0.45" />
+              <rect x="-7.5" y="11" width="15" height="3" rx="1.2" fill="#8a6a2e" />
+              <rect x="-1.8" y="13.5" width="3.6" height="10" rx="1.4" fill="#5a4020" />
+              <circle cx="0" cy="24.5" r="2" fill="#8a6a2e" />
+            </g>
+          ))}
         </g>
       </svg>
       <div className="relative p-3.5 flex flex-col gap-2.5 h-full">

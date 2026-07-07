@@ -80,6 +80,30 @@ export function evaluateSubmit(
     };
   }
 
+  // Seat-ownership binding: when the client presents an identity, a seat is
+  // bound to the first identity that acts as it, and afterwards only that
+  // identity may act as the seat. Bot seats are shared (any client may step
+  // them), so they are never bound. Absent identity = enforcement skipped
+  // (legacy clients / trusted single-device tests).
+  const seat = input.viewerId;
+  const isBotSeat = game.botSeats.includes(seat);
+  let seatOwners = game.seatOwners;
+  if (input.identity && !isBotSeat) {
+    const owner = game.seatOwners?.[seat];
+    if (owner && owner !== input.identity) {
+      return {
+        ok: false,
+        error: {
+          ok: false,
+          code: 'not-your-turn',
+          message: 'This seat is claimed by another player on this game.',
+          cursor,
+        },
+      };
+    }
+    if (!owner) seatOwners = { ...(game.seatOwners ?? {}), [seat]: input.identity };
+  }
+
   const live = liveState(game);
   if (live.phase === 'finished') {
     return { ok: false, error: { ok: false, code: 'game-over', message: 'The game is over.', cursor } };
@@ -97,6 +121,7 @@ export function evaluateSubmit(
   const updated: StoredImpGame = {
     ...game,
     journal: [...game.journal, stamped],
+    seatOwners,
     updatedAt: now,
   };
   return { ok: true, game: updated, snapshot: buildSnapshot(updated, next, input.viewerId) };

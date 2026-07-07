@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { deleteAsyncGame, listAsyncGames } from '../lib/impStore';
+import { SkeletonBlock } from '../components/imp/Skeleton';
 import type { ImpGameSummary } from '../imperium/net';
 
 /** Async multiplayer lobby: create a game, or resume/join an existing one. */
 export default function AsyncLobby() {
   const navigate = useNavigate();
-  const [games, setGames] = useState<ImpGameSummary[]>([]);
+  const [games, setGames] = useState<ImpGameSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const refresh = () =>
     listAsyncGames()
@@ -14,14 +15,17 @@ export default function AsyncLobby() {
         setGames(g);
         setError(null);
       })
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+      .catch((e) => {
+        setGames([]);
+        setError(e instanceof Error ? e.message : String(e));
+      });
 
   useEffect(() => {
     void refresh();
   }, []);
 
   return (
-    <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-start justify-center p-8">
+    <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-start justify-center p-8">
       <div className="w-full max-w-lg space-y-6">
         <header className="flex items-baseline justify-between">
           <h1 className="text-2xl font-semibold text-sand-300">Async multiplayer</h1>
@@ -49,7 +53,13 @@ export default function AsyncLobby() {
               refresh
             </button>
           </div>
-          {games.length === 0 ? (
+          {games === null ? (
+            <div className="space-y-1">
+              <SkeletonBlock className="h-10" />
+              <SkeletonBlock className="h-10" />
+              <SkeletonBlock className="h-10" />
+            </div>
+          ) : games.length === 0 ? (
             <div className="text-sm text-sand-100/40 italic">No async games yet.</div>
           ) : (
             <div className="space-y-1">

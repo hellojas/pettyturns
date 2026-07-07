@@ -9,12 +9,14 @@ import { Icon } from '../components/imp/icons';
 interface SeatDraft {
   name: string;
   leaderId: string;
+  isBot?: boolean;
 }
 
 /**
- * Create an authoritative async game (human seats only). Each seat is played
- * from its own device/tab; the creator is seated first and lands in the game,
- * others join from the lobby by picking their seat.
+ * Create an authoritative async game. Human seats are played from their own
+ * device/tab; bot seats are stepped by any connected client. The creator is
+ * seated first (at the first human seat) and lands in the game; others join
+ * from the lobby by picking their seat.
  */
 export default function AsyncNewGame() {
   const navigate = useNavigate();
@@ -29,12 +31,16 @@ export default function AsyncNewGame() {
 
   const taken = seats.map((s) => s.leaderId);
   const ready =
-    !busy && seats.length >= 2 && seats.every((s) => s.leaderId) && new Set(taken).size === taken.length;
+    !busy &&
+    seats.length >= 2 &&
+    seats.every((s) => s.leaderId) &&
+    new Set(taken).size === taken.length &&
+    seats.some((s) => !s.isBot); // at least one human seat to control the game
   const update = (i: number, patch: Partial<SeatDraft>) =>
     setSeats(seats.map((s, j) => (i === j ? { ...s, ...patch } : s)));
 
   return (
-    <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-start justify-center p-8">
+    <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-start justify-center p-8">
       <div className="w-full max-w-lg space-y-6">
         <header className="flex items-baseline justify-between">
           <h1 className="text-2xl font-semibold text-sand-300">New async game</h1>
@@ -44,7 +50,8 @@ export default function AsyncNewGame() {
         </header>
         <p className="text-sm text-sand-100/50">
           Authoritative, seat-scoped play: each player acts only on their own turn and sees only their own
-          hand. Play every seat on this device by opening the game in separate tabs.
+          hand. Play every seat on this device by opening the game in separate tabs, or mark a seat as a bot
+          to have the AI play it.
         </p>
         <div className="space-y-2">
           {seats.map((seat, i) => (
@@ -64,10 +71,15 @@ export default function AsyncNewGame() {
                   </option>
                 ))}
               </select>
+              <label className="flex items-center gap-1 text-xs text-sand-100/60" title="Let the AI play this seat">
+                <input type="checkbox" checked={!!seat.isBot} onChange={(e) => update(i, { isBot: e.target.checked })} />
+                Bot
+              </label>
               {seats.length > 2 && (
                 <button
                   className="btn-secondary inline-flex items-center"
                   onClick={() => setSeats(seats.filter((_, j) => j !== i))}
+                  aria-label={`Remove seat ${i + 1}`}
                   title="Remove this seat"
                 >
                   <Icon name="close" size={12} />
@@ -106,10 +118,11 @@ export default function AsyncNewGame() {
             setError(null);
             try {
               const gameId = await createAsyncGame(
-                seats.map((s) => ({ name: s.name, leaderId: s.leaderId })),
+                seats.map((s) => ({ name: s.name, leaderId: s.leaderId, isBot: s.isBot })),
                 seed ? Number(seed) : undefined,
               );
-              navigate(`/async/game/${gameId}?seat=p1`);
+              const firstHumanIndex = seats.findIndex((s) => !s.isBot);
+              navigate(`/async/game/${gameId}?seat=p${(firstHumanIndex < 0 ? 0 : firstHumanIndex) + 1}`);
             } catch (err) {
               setError(err instanceof Error ? err.message : String(err));
             } finally {

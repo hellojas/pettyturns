@@ -3,6 +3,8 @@ import type { PlayerId } from '../types';
 import { InMemoryJournalStore } from './journalStore';
 import { buildSnapshot, evaluateSubmit, liveState } from './serverLogic';
 import type {
+  ChatMessage,
+  ChatSinceResult,
   CreateGameInput,
   GameSnapshot,
   ImpGameSummary,
@@ -40,6 +42,7 @@ export class LocalMockTransport implements ImpGameTransport {
   private clock: () => string;
   private newId: () => string;
   private listeners = new Map<string, Set<(cursor: number) => void>>();
+  private chatListeners = new Map<string, Set<(count: number) => void>>();
   private idSeq = 0;
 
   constructor(opts: LocalTransportOptions = {}) {
@@ -123,5 +126,38 @@ export class LocalMockTransport implements ImpGameTransport {
   async remove(gameId: string): Promise<void> {
     this.store.remove(gameId);
     this.listeners.delete(gameId);
+    this.chatListeners.delete(gameId);
+  }
+
+  private notifyChat(gameId: string, count: number): void {
+    for (const l of this.chatListeners.get(gameId) ?? []) l(count);
+  }
+
+  async postChat(gameId: string, msg: Omit<ChatMessage, 'seq' | 'at'>): Promise<void> {
+    if (!this.store.appendChat) return;
+    const log = this.store.appendChat(gameId, { ...msg, at: this.clock() });
+    this.notifyChat(gameId, log.length);
+  }
+
+  async chatSince(gameId: string, sinceCount: number): Promise<ChatSinceResult | null> {
+    if (!this.store.readChat) return null;
+    const all = this.store.readChat(gameId);
+    const from = Math.max(0, sinceCount);
+    return { cursor: all.length, messages: all.slice(from) };
+  }
+
+  subscribeChat(gameId: string, listener: (count: number) => void): () => void {
+    let set = this.chatListeners.get(gameId);
+    if (!set) {
+      set = new Set();
+      this.chatListeners.set(gameId, set);
+    }
+    set.add(listener);
+    return () => {
+      const s = this.chatListeners.get(gameId);
+      if (!s) return;
+      s.delete(listener);
+      if (s.size === 0) this.chatListeners.delete(gameId);
+    };
   }
 }

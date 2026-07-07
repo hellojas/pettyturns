@@ -5,7 +5,7 @@ import { chooseBotAction } from '../imperium/engine/bot';
 import { stateAfter } from '../imperium/engine/replay';
 import { getVisibleImperiumState } from '../imperium/engine/visibility';
 import { LocalMockTransport, LocalStorageJournalStore } from '../imperium/net';
-import type { ImpGameSummary, ImpGameTransport } from '../imperium/net';
+import type { ChatMessage, ImpGameSummary, ImpGameTransport } from '../imperium/net';
 import { RESERVE_DEF_IDS } from '../imperium/data/cards';
 import type {
   CardId,
@@ -43,6 +43,29 @@ const gameKey = (gameId: string) => `imperium:game:${gameId}`;
 let activeTransport: ImpGameTransport = new LocalMockTransport({
   store: new LocalStorageJournalStore(),
 });
+
+/**
+ * A stable per-device anonymous identity, used to bind async seats to the
+ * client that plays them (see StoredImpGame.seatOwners / evaluateSubmit). It is
+ * NOT a login — just a token so two devices can't act as the same seat. Bot
+ * seats ignore it (any client may step them).
+ */
+const UID_KEY = 'imperium:uid';
+function deviceIdentity(): string {
+  try {
+    let id = localStorage.getItem(UID_KEY);
+    if (!id) {
+      id = `u${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+      localStorage.setItem(UID_KEY, id);
+    }
+    return id;
+  } catch {
+    return 'anon';
+  }
+}
+
+/** True when the active transport supports the optional chat side-channel. */
+export const chatEnabled = (): boolean => typeof activeTransport.postChat === 'function';
 
 /** The transport async games run against (localStorage-backed mock by default). */
 export const getImpTransport = (): ImpGameTransport => activeTransport;
@@ -252,20 +275,30 @@ interface ImpStore {
    * via `?debug=1`), the seat switcher works and every seat's hand is visible.
    */
   debugReveal: boolean;
+  /** Async side-channel chat log for the open game. */
+  chat: ChatMessage[];
 
   newGame(seats: Array<{ name: string; leaderId: LeaderId; isBot?: boolean }>, seed?: number): string;
   loadGame(gameId: string): boolean;
-  /** Create an authoritative async game (human seats only) and seat this device first. */
-  createAsyncGame(seats: Array<{ name: string; leaderId: LeaderId }>, seed?: number): Promise<string>;
+  /** Create an authoritative async game (bot seats allowed) and seat this device first. */
+  createAsyncGame(seats: Array<{ name: string; leaderId: LeaderId; isBot?: boolean }>, seed?: number): Promise<string>;
   /** Join an existing async game as `seat`; starts polling for opponents' moves. */
   joinAsyncGame(gameId: string, seat: PlayerId): Promise<boolean>;
   /** Pull any authoritative actions this client is missing and rebuild state. */
   refreshAsync(): Promise<void>;
+  /** Start a fresh game with the same seats/leaders (and bots); returns where to go. */
+  rematch(): Promise<{ gameId: string; mode: 'hotseat' | 'async'; seat?: PlayerId } | null>;
   dispatch(action: ImpDispatchable): void;
   /** Advance every consecutive bot move until a human is up or the game ends. */
   runBots(): void;
   /** Apply exactly one bot move if a bot is the current actor; returns whether it did. */
   stepBot(): boolean;
+  /** Async: submit one bot seat's move through the transport; resolves to success. */
+  stepAsyncBot(): Promise<boolean>;
+  /** Async: pull any chat messages this client is missing. */
+  refreshChat(): Promise<void>;
+  /** Async: post a chat line as this device's seat. */
+  sendChat(text: string): Promise<void>;
   setAutoRun(on: boolean): void;
   undo(): void;
   redo(): void;
@@ -329,8 +362,46 @@ let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let pollGeneration = 0;
 let storageBound = false;
 let liveUnsub: (() => void) | null = null;
+let chatUnsub: (() => void) | null = null;
+
+/**
+ * Async bot pacing. When the current actor is a bot seat, any client with the
+ * game open submits that bot's move through the authoritative transport;
+ * optimistic concurrency means if two clients race the same deterministic bot
+ * move, one lands and the other reconciles by replay (no double-play). A module
+ * timer + generation token keep it single-flight and cancellable.
+ */
+let asyncBotTimer: ReturnType<typeof setTimeout> | null = null;
+let asyncBotGeneration = 0;
+function cancelAsyncBots(): void {
+  asyncBotGeneration++;
+  if (asyncBotTimer) {
+    clearTimeout(asyncBotTimer);
+    asyncBotTimer = null;
+  }
+}
+function scheduleAsyncBots(): void {
+  const st = useImpStore.getState();
+  if (st.mode !== 'async' || !st.state || !st.gameId) return;
+  const actor = currentActor(st.state);
+  if (!actor || !st.botSeats.includes(actor)) return;
+  cancelAsyncBots();
+  const gen = asyncBotGeneration;
+  asyncBotTimer = setTimeout(() => {
+    if (gen !== asyncBotGeneration) return;
+    asyncBotTimer = null;
+    void useImpStore
+      .getState()
+      .stepAsyncBot()
+      .then(() => {
+        if (gen === asyncBotGeneration) scheduleAsyncBots();
+      });
+  }, BOT_STEP_MS);
+}
+
 function stopPolling(): void {
   pollGeneration++;
+  cancelAsyncBots();
   if (pollTimer) {
     clearTimeout(pollTimer);
     pollTimer = null;
@@ -339,10 +410,17 @@ function stopPolling(): void {
     liveUnsub();
     liveUnsub = null;
   }
+  if (chatUnsub) {
+    chatUnsub();
+    chatUnsub = null;
+  }
 }
 function onStorage(): void {
   const st = useImpStore.getState();
-  if (st.mode === 'async' && st.gameId) void st.refreshAsync();
+  if (st.mode === 'async' && st.gameId) {
+    void st.refreshAsync();
+    void st.refreshChat();
+  }
 }
 function startPolling(): void {
   stopPolling();
@@ -362,6 +440,19 @@ function startPolling(): void {
       });
     } catch {
       liveUnsub = null; // a transport without a live channel falls back to poll
+    }
+  }
+
+  // 1b. Real-time chat push (optional side-channel).
+  if (gameId && activeTransport.subscribeChat) {
+    try {
+      chatUnsub = activeTransport.subscribeChat(gameId, (count) => {
+        if (gen !== pollGeneration) return;
+        const st = useImpStore.getState();
+        if (st.mode === 'async' && st.gameId === gameId && count > st.chat.length) void st.refreshChat();
+      });
+    } catch {
+      chatUnsub = null;
     }
   }
 
@@ -398,6 +489,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   mode: 'hotseat',
   localSeat: null,
   syncing: false,
+  chat: [],
 
   newGame(seatInputs, seed) {
     stopPolling(); // leaving any async game
@@ -432,6 +524,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       mode: 'hotseat',
       localSeat: null,
       syncing: false,
+      chat: [],
     });
     scheduleBots(); // e.g. a bot is first player
     return gameId;
@@ -457,6 +550,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       mode: 'hotseat',
       localSeat: null,
       syncing: false,
+      chat: [],
     });
     scheduleBots(); // resume auto-play if a bot is up on load
     return true;
@@ -469,15 +563,20 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       name: s.name || `Player ${i + 1}`,
       leaderId: s.leaderId,
     }));
+    const botSeats = seatInputs
+      .map((s, i) => (s.isBot ? `p${i + 1}` : null))
+      .filter((x): x is string => x !== null);
     let gameId: string;
     try {
-      ({ gameId } = await activeTransport.create({ seats, seed, botSeats: [] }));
+      ({ gameId } = await activeTransport.create({ seats, seed, botSeats }));
     } catch (err) {
       const message = `Could not reach the game server: ${err instanceof Error ? err.message : String(err)}`;
       set({ lastError: message });
       throw new Error(message);
     }
-    await get().joinAsyncGame(gameId, 'p1');
+    // Seat this device at the first human seat (fall back to p1 for an all-bot table).
+    const firstHuman = seats.map((s) => s.playerId).find((pid) => !botSeats.includes(pid)) ?? 'p1';
+    await get().joinAsyncGame(gameId, firstHuman);
     return gameId;
   },
 
@@ -501,15 +600,18 @@ export const useImpStore = create<ImpStore>((set, get) => ({
       journal: co.journal,
       cursor: co.journal.length,
       state,
-      botSeats: [],
+      botSeats: co.botSeats ?? [],
       viewingAs: seat,
       localSeat: seat,
       mode: 'async',
       pending: null,
       lastError: null,
       syncing: false,
+      chat: [],
     });
     startPolling();
+    void get().refreshChat();
+    scheduleAsyncBots(); // a bot may be first to act
     return true;
   },
 
@@ -526,6 +628,24 @@ export const useImpStore = create<ImpStore>((set, get) => ({
     const merged = [...journal, ...delta.actions];
     const state = stateAfter(initial, merged, merged.length);
     set({ journal: merged, cursor: merged.length, state });
+    scheduleAsyncBots(); // an opponent's move may have handed off to a bot
+  },
+
+  async rematch() {
+    const { state, initial, botSeats, mode } = get();
+    const base = state ?? initial;
+    if (!base) return null;
+    const seats = base.playerOrder.map((pid) => ({
+      name: base.players[pid].name,
+      leaderId: base.players[pid].leaderId,
+      isBot: botSeats.includes(pid),
+    }));
+    if (mode === 'async') {
+      const gameId = await get().createAsyncGame(seats);
+      return { gameId, mode: 'async' as const, seat: get().localSeat ?? 'p1' };
+    }
+    const gameId = get().newGame(seats);
+    return { gameId, mode: 'hotseat' as const };
   },
 
   dispatch(action) {
@@ -546,6 +666,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
             viewerId: localSeat,
             action: { ...action, playerId: localSeat } as Omit<ImpAction, 'at'>,
             expectedCursor: journal.length,
+            identity: deviceIdentity(),
           });
           if (res.ok) {
             await get().refreshAsync(); // pull the just-appended action(s) authoritatively
@@ -622,6 +743,56 @@ export const useImpStore = create<ImpStore>((set, get) => ({
     persist(gameId, initial, newJournal, newJournal.length, next, botSeats);
     set({ journal: newJournal, cursor: newJournal.length, state: next, pending: null, lastError: null });
     return true;
+  },
+
+  async stepAsyncBot() {
+    const { state, gameId, journal, botSeats, mode } = get();
+    if (mode !== 'async' || !state || !gameId) return false;
+    const actor = currentActor(state);
+    if (!actor || !botSeats.includes(actor)) return false;
+    const action = chooseBotAction(state, actor);
+    if (!action) return false;
+    try {
+      const res = await activeTransport.submit({
+        gameId,
+        viewerId: actor,
+        action: { ...action, playerId: actor } as Omit<ImpAction, 'at'>,
+        expectedCursor: journal.length,
+        identity: deviceIdentity(),
+      });
+      // Either way, adopt the authoritative log: on success our move landed; on
+      // conflict someone else advanced it (maybe stepped the same bot).
+      await get().refreshAsync();
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async refreshChat() {
+    const { gameId, mode, chat } = get();
+    if (mode !== 'async' || !gameId || !activeTransport.chatSince) return;
+    try {
+      const delta = await activeTransport.chatSince(gameId, chat.length);
+      if (!delta || delta.messages.length === 0) return;
+      set({ chat: [...get().chat, ...delta.messages] });
+    } catch {
+      /* transient — the next push/poll retries */
+    }
+  },
+
+  async sendChat(text) {
+    const { gameId, mode, localSeat, state } = get();
+    const trimmed = text.trim();
+    if (mode !== 'async' || !gameId || !trimmed || !activeTransport.postChat) return;
+    const seat = localSeat ?? 'SPECTATOR';
+    const name = localSeat && state ? state.players[localSeat]?.name ?? localSeat : 'Spectator';
+    try {
+      await activeTransport.postChat(gameId, { seat, name, text: trimmed.slice(0, 500) });
+      await get().refreshChat();
+    } catch (err) {
+      set({ lastError: err instanceof Error ? err.message : String(err) });
+    }
   },
 
   setAutoRun(on) {
