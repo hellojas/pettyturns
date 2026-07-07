@@ -13,8 +13,8 @@ export default function Home() {
   const [games, setGames] = useState(listImpGames());
 
   return (
-    <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-start justify-center p-4 sm:p-8">
-      <div className="w-full max-w-2xl space-y-6">
+    <main className="min-h-screen bg-arrakis-night text-sand-100 flex items-center justify-center p-4 sm:p-8">
+      <div className="w-full max-w-2xl space-y-6 py-8">
         {/* Hero */}
         <header
           className="relative overflow-hidden rounded-2xl px-6 pt-8 pb-16"

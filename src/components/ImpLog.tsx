@@ -18,7 +18,7 @@ function eventIcon(event: string): IconName {
 export default function ImpLog({ view }: { view: ImpVisibleState }) {
   const entries = [...view.log].reverse();
   return (
-    <div className="space-y-0.5 overflow-y-auto max-h-64 pr-1 text-xs">
+    <div className="space-y-0.5 overflow-y-auto max-h-[560px] pr-1 text-xs">
       {entries.map((entry) => {
         const pid = typeof entry.data?.pid === 'string' ? (entry.data.pid as string) : undefined;
         const seatIdx = pid ? view.playerOrder.indexOf(pid) : -1;

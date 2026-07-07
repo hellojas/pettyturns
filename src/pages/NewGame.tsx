@@ -28,7 +28,7 @@ export default function NewGame() {
     setSeats(seats.map((s, j) => (i === j ? { ...s, ...patch } : s)));
 
   return (
-    <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-start justify-center p-8">
+    <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-start justify-center p-8">
       <div className="w-full max-w-lg space-y-6">
         <header className="flex items-baseline justify-between">
           <h1 className="font-display text-2xl font-bold text-sand-300 tracking-wide">New game</h1>

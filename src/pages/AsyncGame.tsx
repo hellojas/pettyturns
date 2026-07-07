@@ -42,7 +42,7 @@ function SeatPicker({ gameId }: { gameId: string }) {
   }, [gameId]);
 
   return (
-    <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-center justify-center p-8">
+    <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-center justify-center p-8">
       <div className="w-full max-w-md space-y-4">
         <header className="flex items-baseline justify-between">
           <h1 className="text-xl font-semibold text-sand-300">Pick your seat</h1>
@@ -106,7 +106,7 @@ export default function AsyncGame() {
   const joined = mode === 'async' && !!view && !!full && full.gameId === gameId && localSeat === seat;
   if (!joined) {
     return (
-      <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-center justify-center">
+      <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-center justify-center">
         <div className="text-center space-y-2">
           <div>Joining game…</div>
           <Link to="/async" className="text-sand-300 underline">
@@ -123,7 +123,7 @@ export default function AsyncGame() {
   const interactive = yourTurn && !finished;
 
   return (
-    <main className="min-h-screen bg-dusk-900 text-sand-100 p-4">
+    <main className="min-h-screen bg-arrakis-night text-sand-100 p-4">
       <div className="max-w-[1760px] mx-auto">
         <header className="flex items-baseline gap-4 mb-3 flex-wrap">
           <Link to="/async" className="text-sand-300 font-semibold hover:underline">

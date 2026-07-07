@@ -30,7 +30,7 @@ export default function Game() {
 
   if (!view || !full) {
     return (
-      <main className="min-h-screen bg-dusk-900 text-sand-100 flex items-center justify-center p-6">
+      <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-center justify-center p-6">
         <div
           className="relative overflow-hidden rounded-2xl px-8 py-10 max-w-sm text-center"
           style={{
@@ -55,7 +55,7 @@ export default function Game() {
   }
 
   return (
-    <main className="min-h-screen bg-dusk-900 text-sand-100 p-4">
+    <main className="min-h-screen bg-arrakis-night text-sand-100 p-4">
       <div className="max-w-[1760px] mx-auto">
         <header className="flex items-baseline gap-4 mb-3">
           <Link to="/" className="font-display text-lg font-bold text-sand-300 hover:underline tracking-wide">
@@ -121,6 +121,12 @@ export default function Game() {
               <h2 className="panel-title">Players</h2>
               <ImpPlayerMat view={view} viewingAs={viewingAs} onViewAs={setViewingAs} />
             </section>
+            {/* The log lives in the left column so it fills the space beside the
+                board instead of leaving a void, and reads as a running feed. */}
+            <section className="panel">
+              <h2 className="panel-title">Log</h2>
+              <ImpLog view={view} />
+            </section>
           </div>
 
           <div>
@@ -143,10 +149,6 @@ export default function Game() {
             <section className="panel">
               <h2 className="panel-title">Market</h2>
               <ImpMarket view={view} viewingAs={viewingAs} />
-            </section>
-            <section className="panel">
-              <h2 className="panel-title">Log</h2>
-              <ImpLog view={view} />
             </section>
           </div>
         </div>

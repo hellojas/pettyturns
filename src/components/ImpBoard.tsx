@@ -466,14 +466,32 @@ function ConflictHero({ view, viewingAs, full, onPass }: {
       }}
     >
       <span className="block h-[5px] w-full shrink-0" style={{ background: tierEdge }} aria-hidden />
-      {/* faint battlefield backdrop */}
+      {/* Battlefield backdrop: a warm glow, dune ridges, and a crossed-kindjal
+          clash emblem behind the content — subtle enough to keep text legible. */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <g stroke="#e0a52b" strokeWidth="0.5" fill="none" opacity="0.14">
-          <circle cx="24" cy="34" r="12" /><circle cx="76" cy="34" r="12" />
-          <circle cx="24" cy="74" r="12" /><circle cx="76" cy="74" r="12" />
-        </g>
-        <g stroke="#d94f3d" strokeWidth="2.4" strokeLinecap="round" opacity="0.12">
-          <line x1="30" y1="82" x2="72" y2="28" /><line x1="70" y1="82" x2="28" y2="28" />
+        <defs>
+          <radialGradient id="ch-glow" cx="50%" cy="6%" r="62%">
+            <stop offset="0%" stopColor="#f0b45a" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#f0b45a" stopOpacity="0" />
+          </radialGradient>
+          <linearGradient id="ch-blade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f4e2b0" />
+            <stop offset="100%" stopColor="#b98a3a" />
+          </linearGradient>
+        </defs>
+        <rect width="100" height="100" fill="url(#ch-glow)" />
+        <path d="M0 72 Q28 63 55 70 T100 66 V100 H0 Z" fill="#2a1c10" opacity="0.5" />
+        <path d="M0 84 Q34 77 62 84 T100 80 V100 H0 Z" fill="#160f08" opacity="0.72" />
+        <g opacity="0.16" transform="translate(50 52)">
+          {[36, -36].map((deg, i) => (
+            <g key={i} transform={`rotate(${deg})`}>
+              <path d="M0 -34 L2.6 -27 L2 12 L-2 12 L-2.6 -27 Z" fill="url(#ch-blade)" />
+              <path d="M0 -32 L0.8 -27 L0.5 10 L-0.5 10 L-0.8 -27 Z" fill="#fff" opacity="0.45" />
+              <rect x="-7.5" y="11" width="15" height="3" rx="1.2" fill="#8a6a2e" />
+              <rect x="-1.8" y="13.5" width="3.6" height="10" rx="1.4" fill="#5a4020" />
+              <circle cx="0" cy="24.5" r="2" fill="#8a6a2e" />
+            </g>
+          ))}
         </g>
       </svg>
       <div className="relative p-3.5 flex flex-col gap-2.5 h-full">
