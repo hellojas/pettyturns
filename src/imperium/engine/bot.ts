@@ -136,6 +136,19 @@ function resolveDecision(state: ImpGameState, d: ImpPendingDecision, pid: Player
     const ranked = [...trashables].sort((a, b) => cardTrashScore(state, a) - cardTrashScore(state, b));
     return firstValid(state, [base, ...ranked.map((trashCardId) => ({ ...base, trashCardId }))]);
   }
+  if (d.kind === 'deploy') {
+    // Reinforce the conflict the signet offers: commit the full allowance.
+    const cap = d.amount ?? 0;
+    return firstValid(state, [{ ...base, deployCount: cap }, { ...base, deployCount: 0 }, base]);
+  }
+  if (d.kind === 'rowTrash') {
+    // Trash the cheapest Imperium-Row card (least disruptive churn) to refill it.
+    const row = d.cardChoices ?? state.imperiumRow;
+    const ranked = [...row].sort(
+      (a, b) => IMP_CARD_DEFS[state.cardsById[a].defId].cost - IMP_CARD_DEFS[state.cardsById[b].defId].cost,
+    );
+    return firstValid(state, ranked.map((rowCardId) => ({ ...base, rowCardId })));
+  }
   return valid(state, base);
 }
 

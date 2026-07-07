@@ -98,6 +98,34 @@ export default function ImpDecision({ view, viewingAs }: { view: ImpVisibleState
           </div>
         </div>
       )}
+
+      {decision.kind === 'deploy' && (
+        <div className="flex flex-wrap gap-1.5">
+          {Array.from({ length: (decision.amount ?? 0) + 1 }, (_, n) => (
+            <button
+              key={n}
+              className={n === 0 ? 'btn-secondary !py-0.5' : 'btn !py-0.5'}
+              onClick={() => resolve({ deployCount: n })}
+            >
+              {n === 0 ? 'Deploy none' : `Deploy ${n}`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {decision.kind === 'rowTrash' && (
+        <div className="flex flex-wrap gap-1.5">
+          {(decision.cardChoices ?? []).map((cardId) => (
+            <button
+              key={cardId}
+              className="btn-secondary !py-0.5"
+              onClick={() => resolve({ rowCardId: cardId })}
+            >
+              Trash {IMP_CARD_DEFS[view.cardsById[cardId].defId]?.name ?? cardId}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

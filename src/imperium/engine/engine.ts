@@ -23,6 +23,7 @@ import type {
   PlayerId,
   SpaceId,
   ResolveDecisionAction,
+  SignetSpecial,
 } from '../types';
 import { IMP_FACTIONS, impFail, impOk } from '../types';
 import {
@@ -274,6 +275,18 @@ function validateResolve(
     }
     case 'deckPeek':
       return impOk(); // keep or discard are both always legal
+    case 'deploy': {
+      const cap = decision.amount ?? 0;
+      const count = action.deployCount ?? 0;
+      if (count < 0 || count > cap) return impFail('bad-deploy', `Deploy between 0 and ${cap} troop(s).`);
+      return impOk();
+    }
+    case 'rowTrash': {
+      if (!action.rowCardId) return impFail('choice-required', 'Choose an Imperium-Row card to trash.');
+      if (!state.imperiumRow.includes(action.rowCardId))
+        return impFail('not-in-row', 'That card is not in the Imperium Row.');
+      return impOk();
+    }
   }
 }
 
@@ -286,6 +299,10 @@ function decisionLabel(decision: ImpPendingDecision): string {
       return `Trash a card (or decline)`;
     case 'deckPeek':
       return `Foresight: keep or discard the top of your deck`;
+    case 'deploy':
+      return `Deploy up to ${decision.amount} troop(s) to the conflict`;
+    case 'rowTrash':
+      return `Trash a card in the Imperium Row`;
   }
 }
 
@@ -481,6 +498,58 @@ function applyResolveDecision(state: ImpGameState, action: ResolveDecisionAction
       }
       break;
     }
+    case 'deploy': {
+      const cap = front.amount ?? 0;
+      const count = Math.max(0, Math.min(action.deployCount ?? 0, cap));
+      const pp = next.players[pid];
+      const fromGarrison = Math.min(count, pp.garrison);
+      const fromSupply = Math.min(count - fromGarrison, pp.supply);
+      const deployed = fromGarrison + fromSupply;
+      if (deployed > 0) {
+        next = {
+          ...next,
+          players: {
+            ...next.players,
+            [pid]: {
+              ...pp,
+              garrison: pp.garrison - fromGarrison,
+              supply: pp.supply - fromSupply,
+              inConflict: pp.inConflict + deployed,
+            },
+          },
+        };
+        next = impLog(next, {
+          event: 'troops.deployed',
+          text: `${next.players[pid].name} deploys ${deployed} troop(s) to the conflict.`,
+          data: { deploy: deployed, via: 'signet' },
+          at: action.at,
+        });
+      } else {
+        next = impLog(next, {
+          event: 'decision.declined',
+          text: `${next.players[pid].name} deploys no troops.`,
+          at: action.at,
+        });
+      }
+      break;
+    }
+    case 'rowTrash': {
+      const cardId = action.rowCardId;
+      if (cardId && next.imperiumRow.includes(cardId)) {
+        const def = cardDef(next, cardId);
+        // Remove from the row (the card leaves the game) and refill the slot.
+        next = { ...next, imperiumRow: next.imperiumRow.filter((c) => c !== cardId) };
+        const [refill, ...rest] = next.imperiumDeck;
+        if (refill) next = { ...next, imperiumRow: [...next.imperiumRow, refill], imperiumDeck: rest };
+        next = impLog(next, {
+          event: 'row.trashed',
+          text: `${next.players[pid].name} trashes ${def.name} from the Imperium Row${refill ? ', refilling the slot' : ''}.`,
+          data: { cardId },
+          at: action.at,
+        });
+      }
+      break;
+    }
   }
 
   // When the queue empties, run whatever flow was parked waiting on it.
@@ -488,6 +557,70 @@ function applyResolveDecision(state: ImpGameState, action: ResolveDecisionAction
     return runResume(next, next.flowResume);
   }
   return next;
+}
+
+/**
+ * Resolve a leader's bespoke signet ability — the ones the flat Gains DSL can't
+ * express. Each raises a pending decision so the player chooses (or, for the
+ * conditional-influence signet with a single eligible track, applies directly).
+ * Called from the signet block during an agent turn; `settle` parks the turn on
+ * the decision queue exactly as it does for any other in-turn choice.
+ */
+function applySignetSpecial(state: ImpGameState, pid: PlayerId, special: SignetSpecial): ImpGameState {
+  let next = state;
+  switch (special.kind) {
+    case 'conditionalInfluence': {
+      const amount = special.amount ?? 1;
+      const me = next.players[pid];
+      const eligible = IMP_FACTIONS.filter((f) =>
+        next.playerOrder.some(
+          (o) => o !== pid && (next.players[o].influence[f] ?? 0) > (me.influence[f] ?? 0),
+        ),
+      );
+      if (eligible.length === 0) {
+        return impLog(next, {
+          event: 'signet.special',
+          text: `${me.name}'s signet finds no faction where an opponent leads — no influence gained.`,
+        });
+      }
+      if (eligible.length === 1) {
+        return addInfluence(next, pid, eligible[0], amount);
+      }
+      return enqueueDecision(next, {
+        playerId: pid,
+        kind: 'influence',
+        prompt: `Signet: gain ${amount} influence with a faction where an opponent leads you.`,
+        amount,
+        factions: eligible,
+      });
+    }
+    case 'deployTroops': {
+      const me = next.players[pid];
+      const cap = Math.min(special.amount ?? 2, me.garrison + me.supply);
+      if (cap <= 0) {
+        return impLog(next, {
+          event: 'signet.special',
+          text: `${me.name}'s signet finds no troops to deploy.`,
+        });
+      }
+      return enqueueDecision(next, {
+        playerId: pid,
+        kind: 'deploy',
+        prompt: `Signet: deploy up to ${cap} troop(s) to the current conflict.`,
+        amount: cap,
+        optional: true,
+      });
+    }
+    case 'trashRowCard': {
+      if (next.imperiumRow.length === 0) return next;
+      return enqueueDecision(next, {
+        playerId: pid,
+        kind: 'rowTrash',
+        prompt: `Signet: trash a card in the Imperium Row (it will be replaced from the deck).`,
+        cardChoices: [...next.imperiumRow],
+      });
+    }
+  }
 }
 
 function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameState {
@@ -606,6 +739,7 @@ function applyPlayCard(state: ImpGameState, action: PlayCardAction): ImpGameStat
       next = fromSignet.state;
       troopsRecruited += fromSignet.troopsRecruited;
       next = impLog(next, { event: 'signet.used', text: `${next.players[pid].name} uses their signet ring ability.` });
+      if (leader.signetSpecial) next = applySignetSpecial(next, pid, leader.signetSpecial);
     }
   }
 

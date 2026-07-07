@@ -255,6 +255,22 @@ export interface LeaderPassive {
   params?: LeaderPassiveParams;
 }
 
+/**
+ * A signet ability the flat Gains DSL can't express, resolved by a dedicated
+ * engine handler (see `applySignetSpecial`). Each raises the appropriate pending
+ * decision so the player chooses:
+ *  - `conditionalInfluence`: gain `amount` influence with a faction where an
+ *    opponent leads you (Duke Leto).
+ *  - `deployTroops`: deploy up to `amount` troops to the current conflict (Rabban).
+ *  - `trashRowCard`: trash an Imperium-Row card, then refill the slot (Helena).
+ */
+export type SignetSpecialKind = 'conditionalInfluence' | 'deployTroops' | 'trashRowCard';
+export interface SignetSpecial {
+  kind: SignetSpecialKind;
+  /** Magnitude: influence to gain / troops to deploy. VERIFY per leader sheet. */
+  amount?: number;
+}
+
 export interface ImpLeaderDef {
   id: LeaderId;
   name: string;
@@ -262,9 +278,14 @@ export interface ImpLeaderDef {
   signetGains: Gains;
   signetCost?: Costs;
   /**
-   * Original-wording note for a signet ability the Gains DSL can't express
-   * (e.g. a conditional influence gain or Imperium-Row manipulation). When set,
-   * the UI shows this text; such signets are not auto-applied by the engine.
+   * A signet effect the flat Gains DSL can't express; the engine resolves it via
+   * a pending decision (`applySignetSpecial`). Present alongside `signetNote`,
+   * which supplies the original-wording UI text.
+   */
+  signetSpecial?: SignetSpecial;
+  /**
+   * Original-wording note describing a signet ability for the UI. Set for the
+   * `signetSpecial` signets (and any that remain display-only).
    */
   signetNote?: string;
   /**
@@ -368,7 +389,7 @@ export type ImpPhase = 'playerTurns' | 'combat' | 'finished';
  * order-independent, so applying it when resolved yields the same result as
  * applying it inline would have.
  */
-export type ImpDecisionKind = 'influence' | 'trash' | 'deckPeek';
+export type ImpDecisionKind = 'influence' | 'trash' | 'deckPeek' | 'deploy' | 'rowTrash';
 
 export interface ImpPendingDecision {
   id: string;
@@ -376,14 +397,16 @@ export interface ImpPendingDecision {
   kind: ImpDecisionKind;
   /** Original-wording prompt for the UI. */
   prompt: string;
-  /** influence: amount to gain on the chosen track. trash: max cards to trash. */
+  /** influence: amount to gain. trash: max to trash. deploy: max troops to deploy. */
   amount?: number;
   /** influence: tracks the player may choose among (omit = all four). */
   factions?: ImpFactionId[];
-  /** trash / deckPeek: the choice may be declined. */
+  /** trash / deckPeek / deploy: the choice may be declined (deploy 0). */
   optional?: boolean;
   /** deckPeek: the top-of-deck card under inspection (visible only to its owner). */
   cardId?: CardId;
+  /** rowTrash: the Imperium-Row cards the player may trash (public). */
+  cardChoices?: CardId[];
 }
 
 /**
@@ -527,6 +550,10 @@ export interface ResolveDecisionAction extends ImpActionBase {
   trashCardId?: CardId;
   /** deckPeek: keep the top card in place, or discard it (omit = keep). */
   discardPeeked?: boolean;
+  /** deploy: how many troops to deploy to the conflict (0..amount; omit = 0). */
+  deployCount?: number;
+  /** rowTrash: which Imperium-Row card to trash. */
+  rowCardId?: CardId;
 }
 
 export type ImpAction =

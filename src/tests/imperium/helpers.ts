@@ -79,8 +79,16 @@ export function drainDecisions(state: ImpGameState): ImpGameState {
         decisionId: d.id,
         faction: (d.factions ?? IMP_FACTIONS)[0],
       });
+    } else if (d.kind === 'rowTrash') {
+      // rowTrash is mandatory: trash the first offered Imperium-Row card.
+      s = apply(s, {
+        type: 'imp/resolveDecision',
+        playerId: d.playerId,
+        decisionId: d.id,
+        rowCardId: (d.cardChoices ?? s.imperiumRow)[0],
+      });
     } else {
-      // trash → decline; deckPeek → keep. Both are the empty-extra resolution.
+      // trash → decline; deckPeek → keep; deploy → deploy none. Empty resolution.
       s = apply(s, { type: 'imp/resolveDecision', playerId: d.playerId, decisionId: d.id });
     }
   }

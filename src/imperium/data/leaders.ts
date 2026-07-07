@@ -15,9 +15,10 @@ import type { ImpLeaderDef, LeaderId } from '../types';
  * The `signetGains` / `signetCost` / `signetNote` fields below have been
  * reconciled against the base-game leader sheets (effect types confirmed; a
  * few amounts, e.g. Ilban's solari, are still worth a final check against your
- * copy). Signets the Gains DSL can't express (Leto's conditional influence,
- * Rabban's deploy, Helena's Imperium-Row manipulation) carry a `signetNote`
- * and are shown in the UI but not auto-applied by the engine.
+ * copy). Signets the flat Gains DSL can't express (Leto's conditional influence,
+ * Rabban's deploy, Helena's Imperium-Row manipulation) now carry a
+ * `signetSpecial` and ARE enforced by the engine (via a pending decision — see
+ * `applySignetSpecial`); `signetNote` supplies their original-wording UI text.
  *
  * VERIFY: the machine-enforced `passives` below are still placeholders — every
  * summary is original wording and the `params` numbers/hooks are guesses to be
@@ -59,8 +60,9 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     name: 'Duke Leto Atreides',
     portrait: '/portraits/dukeLeto.svg',
     // Signet: gain 1 influence with a faction where an opponent leads you.
-    // Conditional target — not expressible as flat Gains, so it's note-only.
+    // Conditional target — resolved by the engine via a pending influence choice.
     signetGains: {},
+    signetSpecial: { kind: 'conditionalInfluence', amount: 1 }, // VERIFY amount
     signetNote: 'Gain 1 influence with a faction where an opponent has more influence than you.',
     passives: [
       {
@@ -104,8 +106,9 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     name: 'Glossu "The Beast" Rabban',
     portrait: '/portraits/glossuRabban.svg',
     // Signet "Brutality": deploy up to 2 of your troops to the current conflict.
-    // Deploying isn't a flat Gain (needs a conflict + garrison), so it's note-only.
+    // Deploying needs a conflict + garrison — resolved by the engine via a choice.
     signetGains: {},
+    signetSpecial: { kind: 'deployTroops', amount: 2 }, // VERIFY amount
     signetNote: 'Deploy up to 2 of your troops to the current conflict.',
     passives: [
       {
@@ -169,8 +172,9 @@ export const IMP_LEADERS: Record<LeaderId, ImpLeaderDef> = {
     name: 'Helena Richese',
     portrait: '/portraits/helenaRichese.svg',
     // Signet: trash a card in the Imperium Row and refill the empty slot from
-    // the deck. Row manipulation isn't a flat Gain, so it's note-only.
+    // the deck. Row manipulation — resolved by the engine via a card choice.
     signetGains: {},
+    signetSpecial: { kind: 'trashRowCard' },
     signetNote: 'Trash a card in the Imperium Row, then refill the empty slot from the deck.',
     passives: [
       {
