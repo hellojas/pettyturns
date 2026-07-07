@@ -38,6 +38,10 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
 
   return (
     <div className="space-y-2 text-xs">
+      <div className="flex items-center gap-1 text-[10px] text-sand-100/40">
+        <Icon name="draw" size={11} />
+        Hover a card for details — or hold <kbd className="px-1 rounded bg-sand-100/10 text-sand-100/70 font-semibold">Shift</kbd> to show instantly.
+      </div>
       {!p.revealed && (
         <>
           <div className="text-sand-100/50 uppercase tracking-wide">Hand ({self.hand.length})</div>
@@ -53,6 +57,7 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
                   disabled={!myTurn || p.agentsLeft <= 0}
                   dimmed={(!myTurn || p.agentsLeft <= 0) && !selected}
                   signetLeaderName={def.signet ? leader?.name : undefined}
+                  signetLeaderId={def.signet ? p.leaderId : undefined}
                   signetGains={def.signet ? leader?.signetGains : undefined}
                   signetCost={def.signet ? leader?.signetCost : undefined}
                   signetNote={def.signet ? leader?.signetNote : undefined}

@@ -4,6 +4,7 @@ import { Icon } from './imp/icons';
 import { cardAccent, cardFaction, costChips, gainsChips } from './imp/visuals';
 import { ChipRow } from './imp/Chips';
 import { CardArt } from './imp/cardArt';
+import { CardDetailPopover, cardDetail, useInspectHover } from './imp/CardDetail';
 
 /**
  * A Dune-Imperium card face used everywhere a card appears (hand, market,
@@ -19,6 +20,7 @@ export default function ImpCard({
   dimmed = false,
   showCost = false,
   signetLeaderName,
+  signetLeaderId,
   signetGains,
   signetCost,
   signetNote,
@@ -34,6 +36,9 @@ export default function ImpCard({
   showCost?: boolean;
   /** For a signet card: the leader whose signet ability it fires. */
   signetLeaderName?: string;
+  /** For a signet card: the leader id, so the inspect popover can show the full
+   *  signet ability + passives. */
+  signetLeaderId?: string;
   /** For a signet card: the leader's signet gains, rendered as chips. */
   signetGains?: Gains;
   /** For a signet card: the leader's signet cost, if any. */
@@ -57,8 +62,12 @@ export default function ImpCard({
   const clickable = !!onClick && !disabled;
   const Tag = clickable ? 'button' : 'div';
 
+  // Hovering a card reveals a full plain-language detail popover (after a short
+  // dwell, or instantly while the inspect key is held).
+  const { ref: wrapRef, handlers, show } = useInspectHover<HTMLDivElement>();
+
   return (
-    <div className={`flex flex-col ${className}`}>
+    <div ref={wrapRef} className={`flex flex-col ${className}`} {...handlers}>
       <Tag
         type={clickable ? 'button' : undefined}
         disabled={clickable ? false : undefined}
@@ -200,6 +209,9 @@ export default function ImpCard({
         )}
       </Tag>
       {footer && <div className="mt-1">{footer}</div>}
+      {show && wrapRef.current && (
+        <CardDetailPopover anchor={wrapRef.current} model={cardDetail(def, signetLeaderId)} />
+      )}
     </div>
   );
 }
