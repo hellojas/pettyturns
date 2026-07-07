@@ -11,13 +11,29 @@ updates. When Firebase isn't reachable the app falls back to the local
 1. **Firestore** — Firebase console → *Firestore Database* → **Create database**
    (production mode, any region).
 2. **Rules** — *Firestore → Rules* tab → paste the contents of
-   [`firestore.rules`](./firestore.rules) → **Publish**.
+   [`firestore.rules`](./firestore.rules) → **Publish**. *(Or deploy from the
+   CLI — see below.)*
 3. **Anonymous auth** — *Authentication → Sign-in method* → enable **Anonymous**.
    The rules require a signed-in session; the app signs each device in
    anonymously on first use.
 
 That's it — no schema or index setup is needed (games are listed by a single
 `updatedAt` order, which Firestore indexes automatically).
+
+## Deploying rules from the CLI (optional)
+
+The repo ships `firebase.json`, `.firebaserc` (project `pettyturns`), and an
+empty `firestore.indexes.json`, so you can publish the rules without pasting:
+
+```
+npm i -g firebase-tools   # once
+firebase login            # once
+firebase deploy --only firestore:rules
+```
+
+Point at a different project with `firebase use <projectId>` (updates
+`.firebaserc`). This deploys only Firestore rules — the app itself is hosted on
+GitHub Pages, not Firebase Hosting.
 
 ## Configuration
 
