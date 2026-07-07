@@ -87,14 +87,16 @@ export default function ImpCard({
         disabled={clickable ? false : undefined}
         onClick={clickable ? onClick : undefined}
         className={`group relative flex flex-col text-left rounded-lg overflow-hidden border transition-all ${
-          selected ? 'ring-2 ring-sand-200 -translate-y-0.5' : ''
+          selected ? 'ring-[3px] ring-amber-200 ring-offset-2 ring-offset-dusk-900 -translate-y-1 scale-[1.02] z-10' : ''
         } ${clickable ? 'hover:-translate-y-0.5 cursor-pointer' : ''} ${
           dimmed ? 'opacity-45 saturate-50' : ''
         } ${disabled && !dimmed ? 'opacity-60' : ''}`}
         style={{
-          borderColor: `${accent}88`,
+          borderColor: selected ? '#fde68a' : `${accent}88`,
           background: `linear-gradient(160deg, #241b13 0%, #1c150f 62%), radial-gradient(120% 90% at 50% -10%, ${accent}33, transparent 60%)`,
-          boxShadow: selected ? `0 0 0 1px ${accent}` : undefined,
+          boxShadow: selected
+            ? `0 0 0 1px #fde68a, 0 0 18px 2px ${accent}cc, 0 8px 20px -4px #000c`
+            : undefined,
         }}
       >
         {/* Paper grain */}
