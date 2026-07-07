@@ -1,30 +1,26 @@
 # HANDOFF — visual polish, turn notifications & feature backlog
 
 Pick-up doc for a fresh session. Read `HANDOFF.md` first for engine/architecture;
-this covers **UI/UX polish**, **turn notifications**, and a **feature backlog** —
-most of which is **already implemented** on this branch and pending reconciliation.
+this covers **UI/UX polish**, **turn notifications**, and a **feature backlog**.
 
-## ⚠️ Read this first — two parallel polish tracks need reconciling
+## ✅ Reconciliation DONE — everything is merged to master
 
-There are **two independent visual-polish efforts** in the repo history:
+There were once two independent visual-polish efforts (a big feature branch and
+master's own polish pass) that overlapped. They have been **reconciled and merged
+to `master`** (commit `0a9cf8e`). Resolutions applied:
 
-- **This branch** (`claude/board-visual-improvements-nh4hpq`, tip ≈ `e9cb250`,
-  built on a big feature commit `e6993b8`): adds a large batch of features (list
-  below). Green: `npx tsc --noEmit` clean, `npm test` = **464 passing**, build clean.
-- **`origin/master`** (advanced past this branch's base `e915a91`): a *separate*
-  polish pass — `090c954` (cards/board/home/results), `f0d7b7d` (richer card art +
-  density-aware layout), `78f53c1` (hover-to-inspect via `imp/CardDetail.tsx`).
+- **Card hover:** kept master's integrated detail-popover (`imp/CardDetail.tsx` on
+  `ImpCard`); dropped the branch's competing `HoverPreview` wrapper everywhere to
+  avoid double-hover. (`HoverPreview.tsx` may remain as an unused file — safe to
+  delete in a cleanup pass.)
+- **Results:** master's portrait/crown/source-breakdown + the branch's `anim-rise` entrance.
+- **Game page:** master's responsive grid + the branch's WinnerCelebration/legend/history.
+- **New/AsyncNewGame:** master's icon buttons + the branch's `aria-label`s.
+- **WormSweep:** self-contained worm SVG (master's `art.tsx` dropped the shared `ArtEmblem`).
 
-They **overlap and conflict** — most importantly both added a card **hover** system:
-- master → `imp/CardDetail.tsx` + `imp/useInspect.ts` (a text popover of card details)
-- this branch → `imp/HoverPreview.tsx` (an enlarged, scaled copy of the card face)
+Verified green at merge: `tsc` clean, **464 tests**, build clean.
 
-A straight `git rebase origin/master` conflicts in ~6 files (ImpGameOver, ImpHand,
-AsyncGame, AsyncNewGame, Game, NewGame). **Do not blind-merge.** The next step is a
-deliberate reconciliation: pick one hover approach (or keep both intentionally),
-then rebase this branch's *unique* features onto master and resolve by hand.
-
-### What this branch (`e6993b8`) adds that master lacks
+### Features now on master (from the merged feature batch)
 - **Winner celebration** — `imp/WinnerCelebration.tsx` + `imp/Confetti.tsx` (reduced-motion-guarded), wired in `ImpGameOver.tsx`.
 - **Hover preview** — `imp/HoverPreview.tsx` (scaled card zoom) on hand + market. *(Just fixed: the preview now renders at full opacity — it used to clone a card's dimmed state and read as ~45% transparent.)*
 - **Icon legend** — `imp/ImpLegend.tsx` (toggle on the game page).
@@ -119,8 +115,10 @@ grep -o 'url(\./[^)]*)' dist/assets/*.css     # must be relative ./ , never /ass
 
 ## Current git state (as of this handoff)
 
-- Branch `claude/board-visual-improvements-nh4hpq` @ ≈`e9cb250`: base master `e915a91`
-  + `e6993b8` (feature batch) + hover-opacity fix + this doc. Green (464 tests).
-- **Not fast-forwardable onto current `origin/master`** — needs the deliberate
-  reconciliation described at the top. Preserve this branch on origin; do the
-  reconciliation as its own focused pass before merging to master.
+- **Merged to `master` (`0a9cf8e`).** The feature batch and master's polish pass
+  were reconciled and fast-forwarded onto master; `tsc` clean, 464 tests, build
+  clean. `claude/board-visual-improvements-nh4hpq` matches master.
+- Remaining open items are the "Visual polish — remaining" list above (mobile
+  layout, player-color legend audit, conflict-resolution animation, a11y pass)
+  plus the ranked feature backlog (server-side redaction, async bots, VERIFY
+  surfacing, deploy hardening). Turn notifications are DONE.
