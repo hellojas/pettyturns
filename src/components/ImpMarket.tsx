@@ -27,12 +27,15 @@ export default function ImpMarket({ view, viewingAs }: { view: ImpVisibleState; 
         footer={
           <div className="flex items-center gap-1">
             {note && <span className="text-[9px] uppercase tracking-wide text-sand-100/35">{note}</span>}
-            {affordable && (
+            {(affordable || tooRich) && (
               <button
-                className="btn ml-auto !py-0.5 !px-2 !text-xs"
-                onClick={() => dispatch({ type: 'imp/buyCard', playerId: viewingAs as PlayerId, cardId: id })}
+                className={`btn ml-auto !py-0.5 !px-2 !text-xs${tooRich ? ' opacity-60 cursor-not-allowed' : ''}`}
+                disabled={tooRich}
+                onClick={
+                  tooRich ? undefined : () => dispatch({ type: 'imp/buyCard', playerId: viewingAs as PlayerId, cardId: id })
+                }
               >
-                Buy
+                {affordable ? 'Buy' : `Need +${def.cost - p!.persuasion}`}
               </button>
             )}
           </div>
