@@ -74,13 +74,14 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
               </div>
               {space?.combat && (
                 <label className="flex items-center gap-2">
-                  Deploy troops
+                  Deploy troops (max {p.garrison})
                   <input
                     type="number"
                     className="input w-14"
                     min={0}
+                    max={p.garrison}
                     value={pending.deploy}
-                    onChange={(e) => setPending({ ...pending, deploy: Number(e.target.value) })}
+                    onChange={(e) => setPending({ ...pending, deploy: Math.max(0, Math.min(p.garrison, Number(e.target.value) || 0)) })}
                   />
                 </label>
               )}
