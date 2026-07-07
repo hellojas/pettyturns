@@ -59,7 +59,7 @@ export function gainsChips(g: Gains | undefined): Chip[] {
   if (g.persuasion) out.push({ icon: 'persuasion', text: `+${g.persuasion}`, title: `+${g.persuasion} persuasion` });
   if (g.swords) out.push({ icon: 'sword', text: `+${g.swords}`, title: `+${g.swords} swords` });
   if (g.vp) out.push({ icon: 'vp', text: `+${g.vp}`, title: `+${g.vp} victory point${g.vp > 1 ? 's' : ''}` });
-  if (g.trashCards) out.push({ icon: 'trash', text: g.trashCards > 1 ? `${g.trashCards}` : '', title: `trash up to ${g.trashCards}` });
+  if (g.trashCards) out.push({ icon: 'trash', text: g.trashCards > 1 ? `${g.trashCards}` : '', title: `trash up to ${g.trashCards} card${g.trashCards > 1 ? 's' : ''} from hand/discard` });
   if (g.acquireReserveCard) {
     const name = IMP_CARD_DEFS[g.acquireReserveCard]?.name ?? g.acquireReserveCard;
     out.push({ icon: 'draw', text: name, title: `acquire ${name}` });

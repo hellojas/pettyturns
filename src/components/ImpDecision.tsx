@@ -1,6 +1,7 @@
 import { IMP_CARD_DEFS } from '../imperium/data/cards';
 import { IMP_FACTIONS, type ImpVisibleState, type PlayerId } from '../imperium/types';
 import { useImpStore } from '../lib/impStore';
+import { CardRef } from './imp/CardDetail';
 
 const FACTION_LABEL: Record<string, string> = {
   emperor: 'Emperor',
@@ -71,9 +72,21 @@ export default function ImpDecision({ view, viewingAs }: { view: ImpVisibleState
         <div className="space-y-1.5">
           <div className="text-sand-200">
             Top of deck:{' '}
-            <span className="font-semibold">
-              {decision.cardId ? IMP_CARD_DEFS[view.cardsById[decision.cardId].defId].name : '(hidden)'}
-            </span>
+            {decision.cardId ? (
+              (() => {
+                const peekDef = IMP_CARD_DEFS[view.cardsById[decision.cardId].defId];
+                return (
+                  <CardRef
+                    def={peekDef}
+                    className="font-semibold text-sand-100 underline decoration-dotted decoration-sand-100/40 underline-offset-2 cursor-help"
+                  >
+                    {peekDef.name}
+                  </CardRef>
+                );
+              })()
+            ) : (
+              <span className="font-semibold">(hidden)</span>
+            )}
           </div>
           <div className="flex gap-1.5">
             <button className="btn !py-0.5" onClick={() => resolve({ discardPeeked: false })}>

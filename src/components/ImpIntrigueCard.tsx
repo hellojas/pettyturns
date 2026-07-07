@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { IntrigueDef } from '../imperium/types';
 import { Icon } from './imp/icons';
 import { gainsChips, costChips } from './imp/visuals';
+import { CardDetailPopover, intrigueDetail, useInspectHover } from './imp/CardDetail';
 
 const KIND_META: Record<IntrigueDef['kind'], { label: string; color: string }> = {
   plot: { label: 'Plot', color: '#b48be0' },
@@ -49,8 +50,9 @@ export default function ImpIntrigueCard({ def, footer }: { def: IntrigueDef; foo
   const meta = KIND_META[def.kind];
   const gains = gainsChips(def.gains);
   const cost = costChips(def.cost);
+  const { ref, handlers, show } = useInspectHover<HTMLDivElement>();
   return (
-    <div className="flex flex-col">
+    <div ref={ref} className="flex flex-col" {...handlers}>
       <div
         className="relative flex flex-col rounded-lg overflow-hidden border"
         style={{
@@ -106,6 +108,7 @@ export default function ImpIntrigueCard({ def, footer }: { def: IntrigueDef; foo
         </div>
       </div>
       {footer && <div className="mt-1">{footer}</div>}
+      {show && ref.current && <CardDetailPopover anchor={ref.current} model={intrigueDetail(def)} />}
     </div>
   );
 }
