@@ -222,7 +222,7 @@ function SpaceTile({
           <EffectLine costs={costs} gains={gains} space={space} />
           {controller && (
             <div className="mt-0.5 flex items-center gap-1 text-[9px] text-sand-100/50">
-              <Meeple color={PLAYER_COLORS[controllerIdx % 4]} size={11} />
+              <Meeple color={PLAYER_COLORS[controllerIdx % 4]} size={11} seatIndex={controllerIdx + 1} />
               held by {view.players[controller].name}
             </div>
           )}
@@ -262,17 +262,27 @@ function InfluenceTrack({ faction, view }: { faction: ImpFactionId; view: ImpVis
             }}
           >
             <div className="flex flex-wrap justify-center gap-[1.5px] min-h-[10px] px-[1px]">
-              {here.map((pid) => (
-                <span
-                  key={pid}
-                  className="w-[10px] h-[10px] rounded-full"
-                  style={{
-                    background: PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4],
-                    boxShadow: `0 0 0 1px #00000088, inset 0 1px 0 #ffffff55, 0 0 4px -1px ${PLAYER_COLORS[view.playerOrder.indexOf(pid) % 4]}`,
-                  }}
-                  title={`${view.players[pid].name}: ${level}`}
-                />
-              ))}
+              {here.map((pid) => {
+                const seatIdx = view.playerOrder.indexOf(pid);
+                return (
+                  <span
+                    key={pid}
+                    className="relative w-[10px] h-[10px] rounded-full inline-flex items-center justify-center"
+                    style={{
+                      background: PLAYER_COLORS[seatIdx % 4],
+                      boxShadow: `0 0 0 1px #00000088, inset 0 1px 0 #ffffff55, 0 0 4px -1px ${PLAYER_COLORS[seatIdx % 4]}`,
+                    }}
+                    title={`${view.players[pid].name}: ${level}`}
+                  >
+                    <span
+                      className="text-[7px] leading-none font-bold tabular-nums"
+                      style={{ color: '#ffffff', textShadow: '0 0 1px #000, 0 0 1px #000' }}
+                    >
+                      {seatIdx + 1}
+                    </span>
+                  </span>
+                );
+              })}
             </div>
             {isAlliance ? (
               <Icon name="vp" size={9} color="#f2c94c" title="alliance level" />
@@ -459,7 +469,7 @@ function CombatantRow({ pid, view, strength, maxStrength, leading }: {
           <span className="text-[10px] font-semibold text-sand-100/90 truncate">{p.name}</span>
           {leading && <Icon name="vp" size={9} color="#f2c94c" title="currently leading the conflict" />}
           <span className="ml-auto inline-flex items-center gap-0.5 shrink-0" title={`${p.inConflict} troop(s) committed`}>
-            <TroopCube color={seat} size={11} />
+            <TroopCube color={seat} size={11} seatIndex={view.playerOrder.indexOf(pid) + 1} />
             <span className="text-[9px] font-bold tabular-nums text-sand-100/70">{p.inConflict}</span>
           </span>
         </div>

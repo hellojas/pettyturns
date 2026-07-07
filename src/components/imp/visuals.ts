@@ -2,8 +2,13 @@ import type { AgentIcon, Costs, Gains, ImpCardDef, SpaceGroup } from '../../impe
 import { IMP_CARD_DEFS } from '../../imperium/data/cards';
 import { ICON_COLORS, type IconName } from './icons';
 
-/** Player seat colors (troop cubes / agent discs / influence markers). */
-export const PLAYER_COLORS = ['#3aa655', '#d24b3e', '#9a5fd0', '#e08a2b'];
+/**
+ * Player seat colors (troop cubes / agent discs / influence markers). Chosen to
+ * stay off the red-green confusion axis so seats remain distinguishable for the
+ * most common color-vision deficiencies; a redundant seat-number channel on
+ * board tokens backs this up. VERIFY: hexes tuned for contrast on the dark board.
+ */
+export const PLAYER_COLORS = ['#3b82f6', '#e08a2b', '#14b8a6', '#d846b0'];
 
 /** Region accent + label per board group, tuned to the physical board zones. */
 export const GROUP_META: Record<SpaceGroup, { label: string; accent: string; icon: IconName }> = {

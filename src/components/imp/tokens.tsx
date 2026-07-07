@@ -6,8 +6,29 @@ import { Icon, type IconName } from './icons';
  * board reads like the components you'd push around the physical one.
  */
 
+/** A small centered seat-number glyph, a redundant (non-color) identity channel. */
+function SeatGlyph({ seatIndex }: { seatIndex: number }) {
+  return (
+    <text
+      x="12"
+      y="13.5"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontSize="11"
+      fontWeight="700"
+      fill="#ffffff"
+      stroke="#000000"
+      strokeWidth="1.4"
+      paintOrder="stroke"
+      style={{ pointerEvents: 'none' }}
+    >
+      {seatIndex}
+    </text>
+  );
+}
+
 /** An agent standee in a player's seat color (the worker placed on a space). */
-export function Meeple({ color, size = 14, title }: { color: string; size?: number; title?: string }) {
+export function Meeple({ color, size = 14, title, seatIndex }: { color: string; size?: number; title?: string; seatIndex?: number }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -26,12 +47,13 @@ export function Meeple({ color, size = 14, title }: { color: string; size?: numb
         strokeWidth="1"
         strokeLinejoin="round"
       />
+      {seatIndex !== undefined && <SeatGlyph seatIndex={seatIndex} />}
     </svg>
   );
 }
 
 /** An isometric troop cube in a seat color; shaded faces give it depth. */
-export function TroopCube({ color, size = 13, title }: { color: string; size?: number; title?: string }) {
+export function TroopCube({ color, size = 13, title, seatIndex }: { color: string; size?: number; title?: string; seatIndex?: number }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -58,6 +80,7 @@ export function TroopCube({ color, size = 13, title }: { color: string; size?: n
         strokeWidth="0.9"
         strokeLinejoin="round"
       />
+      {seatIndex !== undefined && <SeatGlyph seatIndex={seatIndex} />}
     </svg>
   );
 }
