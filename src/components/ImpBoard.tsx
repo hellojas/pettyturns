@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { IMP_SPACE_LIST, IMP_SPACES } from '../imperium/data/spaces';
 import { IMP_CONFLICT_DEFS } from '../imperium/data/conflicts';
 import { IMP_CONSTANTS } from '../imperium/data/constants';
@@ -335,6 +335,32 @@ function FactionCell({
 }
 
 /** A flanking zone (Landsraad / CHOAM) — a light titled cluster beside the hero. */
+/** The CHOAM spice-exchange rates (Sell Melange), rendered as a compact
+ *  reference that fills the zone's height instead of leaving dead space. */
+function SpiceExchange() {
+  const entries = Object.entries(IMP_CONSTANTS.sellMelangeRates)
+    .map(([spice, solari]) => [Number(spice), solari] as const)
+    .sort((a, b) => a[0] - b[0]);
+  return (
+    <div className="relative rounded-lg p-2" style={{ background: '#00000033', border: '1px solid #d9a12b2e' }}>
+      <div className="text-[9px] uppercase tracking-widest text-sand-100/40 mb-1.5">Spice Exchange</div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+        {entries.map(([spice, solari]) => (
+          <div key={spice} className="flex items-center gap-1 text-[11px] font-semibold" title={`sell ${spice} spice for ${solari} solari`}>
+            <span className="inline-flex items-center gap-0.5 tabular-nums">
+              <Icon name="spice" size={13} />{spice}
+            </span>
+            <span className="text-sand-100/35">→</span>
+            <span className="inline-flex items-center gap-0.5 tabular-nums text-sand-100/90">
+              <Icon name="solari" size={13} />{solari}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function FlankZone({
   group,
   view,
@@ -342,6 +368,7 @@ function FlankZone({
   selectedSpace,
   onSelect,
   scene,
+  footer,
 }: {
   group: SpaceGroup;
   view: ImpVisibleState;
@@ -349,11 +376,13 @@ function FlankZone({
   selectedSpace?: string;
   onSelect: (id: string) => void;
   scene?: 'columns' | 'exchange';
+  /** Optional content pinned to the bottom, filling any spare height. */
+  footer?: ReactNode;
 }) {
   const meta = GROUP_META[group];
   const spaces = IMP_SPACE_LIST.filter((s) => s.group === group);
   return (
-    <div className="relative overflow-hidden rounded-xl p-2" style={{ background: `${meta.accent}0d`, border: `1px solid ${meta.accent}33` }}>
+    <div className="relative overflow-hidden rounded-xl p-2 flex flex-col h-full" style={{ background: `${meta.accent}0d`, border: `1px solid ${meta.accent}33` }}>
       {scene && <RegionBackdrop scene={scene} color={meta.accent} opacity={0.45} />}
       <div className="relative flex items-center gap-1.5 px-0.5 mb-1.5">
         <Icon name={meta.icon} size={15} />
@@ -364,6 +393,7 @@ function FlankZone({
           <SpaceTile key={s.id} space={s} view={view} legal={legalTargets.has(s.id)} selected={selectedSpace === s.id} onSelect={() => onSelect(s.id)} />
         ))}
       </div>
+      {footer && <div className="relative mt-auto pt-2">{footer}</div>}
     </div>
   );
 }
@@ -773,7 +803,7 @@ export default function ImpBoard({ view, viewingAs }: { view: ImpVisibleState; v
       <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_1.25fr_1fr] gap-2 mt-2 items-stretch">
         <FlankZone group="landsraad" scene="columns" {...common} />
         <div className="lg:order-none order-first"><ConflictHero view={view} viewingAs={viewingAs} full={full} onPass={() => viewingAs !== 'SPECTATOR' && dispatch({ type: 'imp/combatPass', playerId: viewingAs })} /></div>
-        <FlankZone group="choam" scene="exchange" {...common} />
+        <FlankZone group="choam" scene="exchange" footer={<SpiceExchange />} {...common} />
       </div>
 
       {/* Lower surface — Cities and the Deep Desert as one continuous strip */}
