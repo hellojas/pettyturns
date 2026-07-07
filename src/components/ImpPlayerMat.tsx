@@ -121,7 +121,9 @@ export default function ImpPlayerMat({
           <button
             key={pid}
             onClick={() => onViewAs(pid)}
-            className="w-full text-left rounded-lg overflow-hidden border transition-all hover:-translate-y-px"
+            aria-label={`View as ${p.name}`}
+            aria-pressed={active}
+            className="group relative w-full text-left rounded-lg overflow-hidden border transition-all hover:-translate-y-px"
             style={{
               borderColor: active ? seat : `${seat}44`,
               background: active
@@ -130,6 +132,14 @@ export default function ImpPlayerMat({
               boxShadow: isTurn ? `0 0 0 1px ${seat}, 0 0 12px -4px ${seat}` : undefined,
             }}
           >
+            {/* Hover/focus affordance signalling this mat is a perspective switch. */}
+            <span
+              className="absolute top-1 right-1 z-10 inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-semibold leading-none text-sand-100/80 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 pointer-events-none"
+              style={{ background: `${seat}33` }}
+              aria-hidden="true"
+            >
+              ⇄ view
+            </span>
             {/* Seat color spine */}
             <div className="flex gap-2 p-2">
               <div className="relative shrink-0">
