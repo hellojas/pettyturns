@@ -175,7 +175,7 @@ export function impValidate(state: ImpGameState, action: ImpAction): ImpValidati
           (space.gains?.troops ?? 0) +
           (def.agentGains?.troops ?? 0) +
           placementPassiveTroops(state, pid, space);
-        const limit = IMP_CONSTANTS.baseDeployLimit + gainsTroops;
+        const limit = IMP_CONSTANTS.baseDeployLimit;
         if (action.deploy > limit)
           return impFail('deploy-limit', `You may deploy at most ${limit} troops with this turn.`);
         if (action.deploy > p.garrison + Math.min(gainsTroops, p.supply))

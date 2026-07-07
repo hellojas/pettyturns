@@ -24,8 +24,9 @@ export const IMP_CONSTANTS = {
   /** Combat strength. Verified: 2 per troop in the conflict, 1 per sword. */
   strengthPerTroop: 2,
   strengthPerSword: 1,
-  /** Deploy allowance on a combat-icon agent turn, plus any troops gained that
-   *  turn. Confirmed: you may deploy up to two more troops from your garrison. */
+  /** Deploy allowance on a combat-icon agent turn: a flat cap of two troops
+   *  drawn from your garrison. Troops gained this turn are still deployable but
+   *  do not raise this cap. Confirmed. */
   baseDeployLimit: 2,
   /** Influence track. */
   influenceMax: 6,

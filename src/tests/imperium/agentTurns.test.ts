@@ -51,13 +51,16 @@ describe('agent turns', () => {
     let s = makeImp();
     s = setHand(s, 'p1', ['diplomacy', 'dagger', 'convincingArgument', 'reconnaissance', 'desertHomeworld']);
     const diplomacy = s.hidden.p1.hand[0];
-    // hardy warriors recruits 2 → limit is base 2 + 2 = 4
-    expect(
-      impValidate(s, { type: 'imp/playCard', playerId: 'p1', cardId: diplomacy, spaceId: 'hardyWarriors', deploy: 5 }).ok,
-    ).toBe(false);
-    s = apply(s, { type: 'imp/playCard', playerId: 'p1', cardId: diplomacy, spaceId: 'hardyWarriors', deploy: 4 });
-    expect(s.players.p1.inConflict).toBe(4);
-    expect(s.players.p1.garrison).toBe(1); // 3 + 2 - 4
+    // hardy warriors recruits 2, but the deploy cap is a flat 2 — troops gained
+    // this turn no longer raise the limit.
+    const rejected = impValidate(s, {
+      type: 'imp/playCard', playerId: 'p1', cardId: diplomacy, spaceId: 'hardyWarriors', deploy: 3,
+    });
+    expect(rejected.ok).toBe(false);
+    if (!rejected.ok) expect(rejected.code).toBe('deploy-limit');
+    s = apply(s, { type: 'imp/playCard', playerId: 'p1', cardId: diplomacy, spaceId: 'hardyWarriors', deploy: 2 });
+    expect(s.players.p1.inConflict).toBe(2);
+    expect(s.players.p1.garrison).toBe(3); // 3 + 2 recruited - 2 deployed
   });
 
   it('refuses deployment on non-combat spaces', () => {
