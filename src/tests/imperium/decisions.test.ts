@@ -58,6 +58,59 @@ describe('pending decisions', () => {
       expect(declined.hidden.p1.hand).toContain(target);
     });
 
+    it('re-queues a fresh trash decision (new id) for the remainder of a multi-card grant', () => {
+      let s = makeImp();
+      const first = s.hidden.p1.hand[0];
+      const second = s.hidden.p1.hand[1];
+      expect(first).not.toBe(second);
+
+      s = applyGains(s, 'p1', { trashCards: 2 }).state;
+      expect(s.pendingDecisions).toHaveLength(1);
+      const firstId = s.pendingDecisions[0].id;
+      expect(s.pendingDecisions[0].kind).toBe('trash');
+
+      // Resolve the first trash: a SECOND trash decision is re-queued for p1
+      // with a bumped id, still owed to the same player.
+      s = apply(s, { type: 'imp/resolveDecision', playerId: 'p1', decisionId: firstId, trashCardId: first });
+      expect(s.pendingDecisions).toHaveLength(1);
+      const secondId = s.pendingDecisions[0].id;
+      expect(s.pendingDecisions[0].kind).toBe('trash');
+      expect(s.pendingDecisions[0].playerId).toBe('p1');
+      expect(secondId).not.toBe(firstId);
+      expect(s.pendingDecisions[0].amount).toBe(1);
+
+      // Resolve the second trash: the queue drains, both cards are gone from the
+      // hidden hand/discard zones, and no further trash decision remains.
+      s = apply(s, { type: 'imp/resolveDecision', playerId: 'p1', decisionId: secondId, trashCardId: second });
+      expect(s.pendingDecisions).toHaveLength(0);
+      const own = getVisibleImperiumState(s, 'p1');
+      expect(own.hidden.self!.hand).not.toContain(first);
+      expect(own.hidden.self!.hand).not.toContain(second);
+      expect(own.hidden.self!.discard).not.toContain(first);
+      expect(own.hidden.self!.discard).not.toContain(second);
+      expect(s.hidden.p1.trashed).toContain(first);
+      expect(s.hidden.p1.trashed).toContain(second);
+    });
+
+    it('clears cleanly when the second trash of a multi-card grant is declined', () => {
+      let s = makeImp();
+      const first = s.hidden.p1.hand[0];
+
+      s = applyGains(s, 'p1', { trashCards: 2 }).state;
+      const firstId = s.pendingDecisions[0].id;
+      s = apply(s, { type: 'imp/resolveDecision', playerId: 'p1', decisionId: firstId, trashCardId: first });
+
+      // A second trash decision is owed; decline it (no trashCardId).
+      expect(s.pendingDecisions).toHaveLength(1);
+      const secondId = s.pendingDecisions[0].id;
+      s = apply(s, { type: 'imp/resolveDecision', playerId: 'p1', decisionId: secondId });
+
+      // Decision clears; only the first card was trashed, no re-queue loop.
+      expect(s.pendingDecisions).toHaveLength(0);
+      expect(s.hidden.p1.trashed).toContain(first);
+      expect(s.hidden.p1.trashed).toHaveLength(1);
+    });
+
     it('rejects trashing a card the player does not hold', () => {
       let s = makeImp();
       s = applyGains(s, 'p1', { trashCards: 1 }).state;
