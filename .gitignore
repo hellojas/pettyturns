@@ -7,3 +7,7 @@ coverage
 !.env.example
 .DS_Store
 tsconfig.tsbuildinfo
+# Local-only full-text extraction of the bundled rulebook PDF (regenerate with
+# `pdftotext DUNE_IMPERIUM_Rules_2020_10_26.pdf - > rulebook.md`); kept out of
+# the repo so we don't publish a searchable copy of the copyrighted rules.
+rulebook.md

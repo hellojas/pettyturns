@@ -4,77 +4,75 @@ import { IMP_FACTION_INFLUENCE_REWARDS } from '../../imperium/data/factions';
 import { makeImp } from './helpers';
 
 /**
- * Faction influence-track step rewards: reaching a level (upward crossing only)
- * grants that level's configured Gains once, on top of any VP/alliance the
- * level carries. Rewards are never clawed back on a downward crossing.
+ * Faction influence-track step rewards. Verified against the 2020 rulebook: the
+ * base game grants a single track bonus, on the level-4 (Alliance) space. It
+ * fires on the upward crossing only, is never clawed back on a drop, and can be
+ * earned again by dropping below 4 and re-crossing.
  *
  * These assertions read the current config values so they track edits made when
- * the owner VERIFIES the numbers; the mechanic — which levels fire and when — is
- * what's pinned here.
+ * the owner VERIFIES the payloads; the mechanic — the level-4 bonus fires once
+ * per upward crossing and never reverses — is what's pinned here.
  */
 describe('faction influence-track step rewards', () => {
-  it('grants a level reward when first reaching it', () => {
+  it('grants the level-4 reward when first reaching it', () => {
     let s = makeImp();
     const solariBefore = s.players.p1.solari;
-    s = addInfluence(s, 'p1', 'emperor', 1); // reaches level 1
-    const reward = IMP_FACTION_INFLUENCE_REWARDS.emperor[1]!;
+    s = addInfluence(s, 'p1', 'emperor', 4); // reaches level 4
+    const reward = IMP_FACTION_INFLUENCE_REWARDS.emperor[4]!;
     expect(s.players.p1.solari).toBe(solariBefore + (reward.solari ?? 0));
   });
 
-  it('grants every level crossed in a single jump, once each', () => {
+  it('grants the reward once when the level is crossed in a single jump', () => {
     let s = makeImp();
     const solariBefore = s.players.p1.solari;
-    const garrisonBefore = s.players.p1.garrison;
-    s = addInfluence(s, 'p1', 'emperor', 3); // crosses levels 1, 2, 3 at once
-    const l1 = IMP_FACTION_INFLUENCE_REWARDS.emperor[1]!;
-    const l3 = IMP_FACTION_INFLUENCE_REWARDS.emperor[3]!;
-    expect(s.players.p1.solari).toBe(solariBefore + (l1.solari ?? 0));
-    expect(s.players.p1.garrison).toBe(garrisonBefore + (l3.troops ?? 0));
-    // The level-2 VP still lands alongside the resource rewards.
-    expect(s.players.p1.vp).toBe(1);
+    s = addInfluence(s, 'p1', 'emperor', 4); // crosses levels 1-4 at once
+    const l4 = IMP_FACTION_INFLUENCE_REWARDS.emperor[4]!;
+    expect(s.players.p1.solari).toBe(solariBefore + (l4.solari ?? 0));
+    // Reaching 4 lands the level-2 VP and the alliance VP.
+    expect(s.players.p1.vp).toBe(2);
   });
 
-  it('does not re-grant a reward for influence gained above an already-passed level', () => {
+  it('does not re-grant the reward for influence gained above the level', () => {
     let s = makeImp();
-    s = addInfluence(s, 'p1', 'emperor', 1); // reward at level 1
-    const solariAfterL1 = s.players.p1.solari;
-    s = addInfluence(s, 'p1', 'emperor', 1); // 1 → 2: no level-1 reward, level 2 has none
-    expect(s.players.p1.solari).toBe(solariAfterL1);
+    s = addInfluence(s, 'p1', 'emperor', 4); // level-4 reward
+    const solariAfter = s.players.p1.solari;
+    s = addInfluence(s, 'p1', 'emperor', 1); // 4 → 5: no further reward
+    expect(s.players.p1.solari).toBe(solariAfter);
   });
 
   it('never claws a resource reward back on a downward crossing', () => {
     let s = makeImp();
-    s = addInfluence(s, 'p1', 'emperor', 1); // +solari reward
+    s = addInfluence(s, 'p1', 'emperor', 4); // +solari reward
     const solari = s.players.p1.solari;
-    s = addInfluence(s, 'p1', 'emperor', -1); // back to 0
+    s = addInfluence(s, 'p1', 'emperor', -1); // back to 3
     expect(s.players.p1.solari).toBe(solari); // resources stay; only VP is symmetric
   });
 
-  it('re-grants when a level is genuinely re-crossed upward', () => {
+  it('re-grants when the level is genuinely re-crossed upward', () => {
     let s = makeImp();
-    s = addInfluence(s, 'p1', 'emperor', 1);
-    s = addInfluence(s, 'p1', 'emperor', -1); // drop below level 1
+    s = addInfluence(s, 'p1', 'emperor', 4);
+    s = addInfluence(s, 'p1', 'emperor', -1); // drop below level 4
     const before = s.players.p1.solari;
-    s = addInfluence(s, 'p1', 'emperor', 1); // cross level 1 again
-    const reward = IMP_FACTION_INFLUENCE_REWARDS.emperor[1]!;
+    s = addInfluence(s, 'p1', 'emperor', 1); // cross level 4 again
+    const reward = IMP_FACTION_INFLUENCE_REWARDS.emperor[4]!;
     expect(s.players.p1.solari).toBe(before + (reward.solari ?? 0));
   });
 
-  it('draws an intrigue card for the Bene Gesserit level-1 reward', () => {
+  it('draws an intrigue card for the Bene Gesserit level-4 reward', () => {
     let s = makeImp();
     const before = s.hidden.p1.intrigue.length;
-    s = addInfluence(s, 'p1', 'beneGesserit', 1);
-    const reward = IMP_FACTION_INFLUENCE_REWARDS.beneGesserit[1]!;
+    s = addInfluence(s, 'p1', 'beneGesserit', 4);
+    const reward = IMP_FACTION_INFLUENCE_REWARDS.beneGesserit[4]!;
     expect(s.hidden.p1.intrigue.length).toBe(before + (reward.intrigueCards ?? 0));
   });
 
   it('logs an influence.reward entry for each reward claimed', () => {
     let s = makeImp();
-    s = addInfluence(s, 'p1', 'fremen', 3); // fires the level-1 and level-3 rewards
+    s = addInfluence(s, 'p1', 'fremen', 4); // fires the single level-4 reward
     const rewardLogs = s.log.filter(
       (e) => e.event === 'influence.reward' && (e.data as { faction?: string })?.faction === 'fremen',
     );
-    const configured = Object.keys(IMP_FACTION_INFLUENCE_REWARDS.fremen).filter((lvl) => Number(lvl) <= 3).length;
+    const configured = Object.keys(IMP_FACTION_INFLUENCE_REWARDS.fremen).length;
     expect(rewardLogs.length).toBe(configured);
   });
 });

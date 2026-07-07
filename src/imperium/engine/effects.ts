@@ -186,11 +186,22 @@ export function reevaluateAlliance(state: ImpGameState, faction: ImpFactionId): 
     const top = Math.max(...eligible.map((p) => p.influence[faction]));
     const leaders = eligible.filter((p) => p.influence[faction] === top);
     if (holder && eligible.some((p) => p.id === holder) && state.players[holder].influence[faction] >= top) {
-      newHolder = holder; // holder keeps the token on ties (VERIFY)
+      // Verified (2020 rulebook): the holder loses the Alliance only when an
+      // opponent is "passed by an opponent rising to a higher space" — a strict
+      // pass. A mere tie does not transfer it, so the incumbent keeps it here.
+      newHolder = holder;
     } else if (leaders.length === 1) {
       newHolder = leaders[0].id;
-    } else if (!holder || !eligible.some((p) => p.id === holder)) {
-      newHolder = null; // contested with no incumbent — nobody holds it (VERIFY)
+    } else {
+      // Contested at the alliance level with no valid incumbent (either nobody
+      // held it, or the previous holder dropped below the level). The rulebook
+      // gives the Alliance to the *first* player to reach 4, and the FAQ resolves
+      // a genuine tie by choosing a holder — it is never left unclaimed.
+      // Sequential single-step play can't reach this branch (the first arrival is
+      // already the incumbent); it only arises from simultaneous influence
+      // effects, so resolve it deterministically to the tied leader earliest in
+      // seat order.
+      newHolder = state.playerOrder.find((id) => leaders.some((p) => p.id === id)) ?? leaders[0].id;
     }
   }
 
