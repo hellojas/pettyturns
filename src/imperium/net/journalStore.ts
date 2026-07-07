@@ -1,5 +1,5 @@
 import { stateAfter } from '../engine/replay';
-import type { ImpGameSummary, JournalStore, StoredImpGame } from './types';
+import type { ChatMessage, ImpGameSummary, JournalStore, StoredImpGame } from './types';
 
 /**
  * JournalStore implementations for the async-multiplayer scaffolding.
@@ -28,6 +28,7 @@ function summarize(game: StoredImpGame): ImpGameSummary {
 
 export class InMemoryJournalStore implements JournalStore {
   private games = new Map<string, StoredImpGame>();
+  private chats = new Map<string, ChatMessage[]>();
 
   read(gameId: string): StoredImpGame | null {
     const g = this.games.get(gameId);
@@ -47,11 +48,24 @@ export class InMemoryJournalStore implements JournalStore {
 
   remove(gameId: string): void {
     this.games.delete(gameId);
+    this.chats.delete(gameId);
+  }
+
+  readChat(gameId: string): ChatMessage[] {
+    return [...(this.chats.get(gameId) ?? [])];
+  }
+
+  appendChat(gameId: string, msg: Omit<ChatMessage, 'seq'>): ChatMessage[] {
+    const log = this.chats.get(gameId) ?? [];
+    const next = [...log, { ...msg, seq: log.length }];
+    this.chats.set(gameId, next);
+    return [...next];
   }
 }
 
 const KEY_PREFIX = 'imperium:net:game:';
 const INDEX_KEY = 'imperium:net:index';
+const CHAT_PREFIX = 'imperium:net:chat:';
 
 /** Guards against SSR / non-browser test contexts where localStorage is absent. */
 function hasLocalStorage(): boolean {
@@ -105,6 +119,23 @@ export class LocalStorageJournalStore implements JournalStore {
   remove(gameId: string): void {
     if (!hasLocalStorage()) return;
     localStorage.removeItem(KEY_PREFIX + gameId);
+    localStorage.removeItem(CHAT_PREFIX + gameId);
     this.setIds(this.ids().filter((id) => id !== gameId));
+  }
+
+  readChat(gameId: string): ChatMessage[] {
+    if (!hasLocalStorage()) return [];
+    try {
+      return JSON.parse(localStorage.getItem(CHAT_PREFIX + gameId) ?? '[]') as ChatMessage[];
+    } catch {
+      return [];
+    }
+  }
+
+  appendChat(gameId: string, msg: Omit<ChatMessage, 'seq'>): ChatMessage[] {
+    const log = this.readChat(gameId);
+    const next = [...log, { ...msg, seq: log.length }];
+    if (hasLocalStorage()) localStorage.setItem(CHAT_PREFIX + gameId, JSON.stringify(next));
+    return next;
   }
 }

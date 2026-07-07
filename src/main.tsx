@@ -23,6 +23,20 @@ async function initTransport(): Promise<void> {
 }
 void initTransport();
 
+/**
+ * Register the offline service worker in production builds. Registered from a
+ * base-relative URL so it resolves to `<base>/sw.js` under the GitHub Pages
+ * project subpath and takes the subpath as its scope. Skipped in dev so Vite's
+ * module server isn't shadowed by a cache.
+ */
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
+      /* offline support is a progressive enhancement — ignore registration failures */
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />

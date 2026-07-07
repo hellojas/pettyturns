@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ImpBoard from '../components/ImpBoard';
+import ImpChat from '../components/ImpChat';
 import ImpDecision from '../components/ImpDecision';
 import ImpGameOver from '../components/ImpGameOver';
 import ImpHand from '../components/ImpHand';
 import ImpLog from '../components/ImpLog';
 import ImpMarket from '../components/ImpMarket';
 import ImpPlayerMat from '../components/ImpPlayerMat';
+import ImpReplayBar from '../components/ImpReplayBar';
+import ImpLegend from '../components/imp/ImpLegend';
 import LeaderPortrait from '../components/imp/LeaderPortrait';
+import WinnerCelebration from '../components/imp/WinnerCelebration';
+import { LoadingCard } from '../components/imp/Skeleton';
+import { useTurnNotifications } from '../components/imp/useTurnNotifications';
 import { PLAYER_COLORS } from '../components/imp/visuals';
 import { Icon } from '../components/imp/icons';
-import { getImpTransport, stopAsyncPolling, useImpStore, useImpView } from '../lib/impStore';
+import { chatEnabled, getImpTransport, stopAsyncPolling, useImpStore, useImpView } from '../lib/impStore';
 import type { PlayerId } from '../imperium/types';
 
 interface SeatOption {
@@ -77,6 +83,7 @@ function SeatPicker({ gameId }: { gameId: string }) {
 /** Async game screen: same board as hotseat, but seat-scoped and turn-gated. */
 export default function AsyncGame() {
   const { gameId } = useParams();
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   const seat = params.get('seat') as PlayerId | null;
 
@@ -85,8 +92,12 @@ export default function AsyncGame() {
   const refreshAsync = useImpStore((s) => s.refreshAsync);
   const setViewingAs = useImpStore((s) => s.setViewingAs);
   const setDebugReveal = useImpStore((s) => s.setDebugReveal);
+  const rematch = useImpStore((s) => s.rematch);
   const lastError = useImpStore((s) => s.lastError);
   const clearError = useImpStore((s) => s.clearError);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
   const { full, view, viewingAs, mode, localSeat, syncing, actor, yourTurn } = useImpView();
 
   useEffect(() => {
@@ -101,26 +112,32 @@ export default function AsyncGame() {
     return () => setDebugReveal(false);
   }, [debug]);
 
+  const finished = view?.phase === 'finished';
+  // "It's your move" signals (tab title/favicon always; push + chime opt-in).
+  const notify = useTurnNotifications({
+    yourTurn: !!yourTurn,
+    active: !!localSeat && !finished,
+    title: 'Your move — Imperium',
+    body: view && localSeat ? `${view.players[localSeat]?.name ?? 'You'} — it's your turn` : "It's your turn",
+  });
+
   if (!seat) return <SeatPicker gameId={gameId ?? ''} />;
 
   const joined = mode === 'async' && !!view && !!full && full.gameId === gameId && localSeat === seat;
   if (!joined) {
-    return (
-      <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <div>Joining game…</div>
-          <Link to="/async" className="text-sand-300 underline">
-            Back to lobby
-          </Link>
-        </div>
-      </main>
-    );
+    return <LoadingCard title="Joining game…" subtitle="Syncing the table from this device." />;
   }
 
-  const finished = view.phase === 'finished';
   const actorName = actor ? view.players[actor]?.name : null;
   // Gate interaction to this seat's turn (a pending decision you own counts as your turn).
   const interactive = yourTurn && !finished;
+  const canChat = chatEnabled();
+
+  const onRematch = async () => {
+    const res = await rematch();
+    if (res?.mode === 'async') navigate(`/async/game/${res.gameId}?seat=${res.seat ?? 'p1'}`);
+    else if (res) navigate(`/game/${res.gameId}`);
+  };
 
   return (
     <main className="min-h-screen bg-arrakis-night text-sand-100 p-4">
@@ -155,6 +172,45 @@ export default function AsyncGame() {
               </span>
             )}
             {syncing && <span className="text-xs text-sand-100/40">syncing…</span>}
+            {notify.supported && (
+              <button
+                className={`btn-secondary !py-0.5 !px-2 ${notify.enabled ? '!border-emerald-600 text-emerald-300' : ''}`}
+                onClick={notify.toggle}
+                title={
+                  notify.enabled
+                    ? 'Turn alerts on (tab badge always; notification + chime when hidden)'
+                    : 'Notify me when it becomes my turn'
+                }
+                aria-pressed={notify.enabled}
+              >
+                {notify.enabled ? '🔔 On' : '🔔 Notify'}
+              </button>
+            )}
+            {canChat && (
+              <button
+                className={`btn-secondary !py-0.5 !px-2 ${chatOpen ? '!border-sand-500' : ''}`}
+                onClick={() => setChatOpen((v) => !v)}
+                title="Toggle game chat"
+                aria-pressed={chatOpen}
+              >
+                💬 Chat
+              </button>
+            )}
+            <button
+              className="btn-secondary !py-0.5 !px-2"
+              onClick={() => setLegendOpen(true)}
+              title="Icon & rules cheat-sheet"
+              aria-label="Open the icon and rules cheat-sheet"
+            >
+              ? Key
+            </button>
+            <button
+              className="btn-secondary !py-0.5 !px-2"
+              onClick={() => setHistoryOpen(true)}
+              title="Replay the move history"
+            >
+              ⧗ History
+            </button>
             <button
               className="btn-secondary !py-0.5 !px-2 inline-flex items-center gap-1"
               onClick={() => void refreshAsync()}
@@ -165,12 +221,21 @@ export default function AsyncGame() {
           </div>
         </header>
 
+        {finished && (
+          <div className="mb-4">
+            <WinnerCelebration view={view} />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_320px] gap-4">
           <div className="space-y-4">
             {finished && (
               <section className="panel border-amber-600">
                 <h2 className="panel-title">Final results</h2>
                 <ImpGameOver view={view} />
+                <button className="btn w-full mt-3" onClick={onRematch} title="Start a new game with the same players">
+                  ↺ Rematch — same players
+                </button>
               </section>
             )}
             <section className="panel">
@@ -179,8 +244,10 @@ export default function AsyncGame() {
             </section>
           </div>
 
-          <div className={interactive ? '' : 'pointer-events-none opacity-90'}>
-            <ImpBoard view={view} viewingAs={viewingAs} />
+          <div className="overflow-x-auto lg:overflow-visible">
+            <div className={`min-w-[680px] lg:min-w-0 ${interactive ? '' : 'pointer-events-none opacity-90'}`}>
+              <ImpBoard view={view} viewingAs={viewingAs} />
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -198,6 +265,12 @@ export default function AsyncGame() {
               <h2 className="panel-title">Market</h2>
               <ImpMarket view={view} viewingAs={viewingAs} />
             </section>
+            {canChat && chatOpen && (
+              <section className="panel border-sand-700">
+                <h2 className="panel-title">Chat</h2>
+                <ImpChat view={view} />
+              </section>
+            )}
             <section className="panel">
               <h2 className="panel-title">Log</h2>
               <ImpLog view={view} />
@@ -220,6 +293,9 @@ export default function AsyncGame() {
           </button>
         )}
       </div>
+
+      {legendOpen && <ImpLegend onClose={() => setLegendOpen(false)} />}
+      {historyOpen && <ImpReplayBar onClose={() => setHistoryOpen(false)} />}
     </main>
   );
 }

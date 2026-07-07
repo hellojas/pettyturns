@@ -6,6 +6,8 @@ import { Icon, ICON_COLORS, type IconName } from './imp/icons';
 import { PLAYER_COLORS } from './imp/visuals';
 import LeaderPortrait from './imp/LeaderPortrait';
 import { FlashValue } from './imp/motion';
+import DeckPiles from './imp/DeckPiles';
+import { Meeple } from './imp/tokens';
 
 /** Short original-wording summary of a step reward's Gains. */
 function describeGains(g: Gains): string {
@@ -92,13 +94,25 @@ export default function ImpPlayerMat({
 }) {
   return (
     <div className="space-y-2">
+      {/* Persistent seat-color key so a newcomer can read "green = P1" at a glance. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-0.5 pb-0.5" aria-label="Seat colors">
+        {view.playerOrder.map((pid, idx) => (
+          <span key={pid} className="inline-flex items-center gap-1 text-[10px] text-sand-100/55">
+            <Meeple color={PLAYER_COLORS[idx % 4]} size={12} title={`${view.players[pid].name} — Player ${idx + 1}`} />
+            <span className="truncate max-w-[70px]">{view.players[pid].name}</span>
+          </span>
+        ))}
+      </div>
       {view.playerOrder.map((pid, idx) => {
         const p = view.players[pid];
         const seat = PLAYER_COLORS[idx % 4];
         const other = view.hidden.others[pid];
-        const handCount = pid === viewingAs ? view.hidden.self?.hand.length ?? 0 : other?.handCount ?? 0;
+        const self = view.hidden.self;
+        const handCount = pid === viewingAs ? self?.hand.length ?? 0 : other?.handCount ?? 0;
         const intrigueCount =
-          pid === viewingAs ? view.hidden.self?.intrigue.length ?? 0 : other?.intrigueCount ?? 0;
+          pid === viewingAs ? self?.intrigue.length ?? 0 : other?.intrigueCount ?? 0;
+        const deckCount = pid === viewingAs ? self?.deckCount ?? 0 : other?.deckCount ?? 0;
+        const discardCount = pid === viewingAs ? self?.discard.length ?? 0 : other?.discard.length ?? 0;
         const isTurn = view.turn === pid;
         const active = viewingAs === pid;
         const leader = IMP_LEADERS[p.leaderId];
@@ -199,6 +213,11 @@ export default function ImpPlayerMat({
                 <Stat icon="draw" value={`${handCount}`} title="cards in hand" />
                 <Stat icon="intrigue" value={`${intrigueCount}`} title="intrigue cards" />
               </span>
+            </div>
+
+            {/* Physical draw + discard piles */}
+            <div className="px-2 pb-1.5 -mt-0.5 flex items-center">
+              <DeckPiles deckCount={deckCount} discardCount={discardCount} />
             </div>
 
             {(p.hasCouncilSeat || p.hasSwordmaster || p.controls.length > 0) && (

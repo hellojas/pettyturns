@@ -38,8 +38,33 @@ export interface StoredImpGame {
   journal: ImpAction[];
   /** Seats driven by the heuristic AI (server may step these). */
   botSeats: PlayerId[];
+  /**
+   * Seat → owning client identity (an anonymous device/uid token), claimed on a
+   * seat's first action. Once set, only that identity may act as the seat — the
+   * binding that stops one player acting as another. Bot seats are never bound
+   * (any client may step them). Optional/absent on games created before this
+   * existed, in which case no ownership is enforced (backward compatible).
+   */
+  seatOwners?: Partial<Record<PlayerId, string>>;
   createdAt: string;
   updatedAt: string;
+}
+
+/** A single chat line in an async game's side conversation. */
+export interface ChatMessage {
+  /** Monotonic index within the game's chat log (append-only). */
+  seq: number;
+  /** The seat that sent it, or 'SPECTATOR' for an unseated viewer. */
+  seat: PlayerId | 'SPECTATOR';
+  name: string;
+  text: string;
+  at: string;
+}
+
+/** Incremental chat catch-up: messages after a known count. */
+export interface ChatSinceResult {
+  cursor: number;
+  messages: ChatMessage[];
 }
 
 /** Lightweight listing row (no full state) for lobby/menu screens. */
@@ -65,6 +90,10 @@ export interface JournalStore {
   write(game: StoredImpGame): void;
   list(): ImpGameSummary[];
   remove(gameId: string): void;
+  /** Full chat log for a game (optional — a store without chat returns nothing). */
+  readChat?(gameId: string): ChatMessage[];
+  /** Append a chat message and return the updated log. */
+  appendChat?(gameId: string, msg: Omit<ChatMessage, 'seq'>): ChatMessage[];
 }
 
 export interface CreateGameInput {
@@ -100,6 +129,13 @@ export interface SubmitInput {
    * retry — the reconcile-by-replay path.
    */
   expectedCursor: number;
+  /**
+   * The submitting client's stable anonymous identity (device/uid token). When
+   * present, the server binds the acting seat to it on first use and rejects a
+   * later submit from a different identity for that seat. Omit to skip ownership
+   * enforcement entirely (legacy clients / trusted single-device tests).
+   */
+  identity?: string;
 }
 
 export interface SubmitOk {
@@ -160,4 +196,13 @@ export interface ImpGameTransport {
   subscribe(gameId: string, listener: (cursor: number) => void): () => void;
   list(): Promise<ImpGameSummary[]>;
   remove(gameId: string): Promise<void>;
+
+  // --- Optional side-channel chat (a transport without it simply omits these;
+  //     the UI hides chat when `postChat` is absent). ---
+  /** Post a chat line; resolves once persisted. */
+  postChat?(gameId: string, msg: Omit<ChatMessage, 'seq' | 'at'>): Promise<void>;
+  /** Chat messages after `sinceCount`; null if the game is unknown. */
+  chatSince?(gameId: string, sinceCount: number): Promise<ChatSinceResult | null>;
+  /** Notify on every chat append; returns an unsubscribe function. */
+  subscribeChat?(gameId: string, listener: (count: number) => void): () => void;
 }

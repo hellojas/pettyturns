@@ -1,0 +1,19 @@
+{
+  "name": "Imperium Engine — Desert Power",
+  "short_name": "Imperium",
+  "description": "A private deck-building & agent-placement companion for owners of the physical game.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#12100c",
+  "theme_color": "#12100c",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

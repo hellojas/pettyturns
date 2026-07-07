@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import ImpBoard from '../components/ImpBoard';
 import ImpDecision from '../components/ImpDecision';
 import ImpGameOver from '../components/ImpGameOver';
@@ -7,13 +7,17 @@ import ImpHand from '../components/ImpHand';
 import ImpLog from '../components/ImpLog';
 import ImpMarket from '../components/ImpMarket';
 import ImpPlayerMat from '../components/ImpPlayerMat';
+import ImpReplayBar from '../components/ImpReplayBar';
 import LeaderPortrait from '../components/imp/LeaderPortrait';
 import { Icon } from '../components/imp/icons';
+import ImpLegend from '../components/imp/ImpLegend';
+import WinnerCelebration from '../components/imp/WinnerCelebration';
 import { useImpStore, useImpView } from '../lib/impStore';
 
 /** Main game screen: players/conflict left, board center, hand/market/log right. */
 export default function Game() {
   const { gameId } = useParams();
+  const navigate = useNavigate();
   const loadGame = useImpStore((s) => s.loadGame);
   const setViewingAs = useImpStore((s) => s.setViewingAs);
   const lastError = useImpStore((s) => s.lastError);
@@ -22,11 +26,20 @@ export default function Game() {
   const redo = useImpStore((s) => s.redo);
   const runBots = useImpStore((s) => s.runBots);
   const setAutoRun = useImpStore((s) => s.setAutoRun);
+  const rematch = useImpStore((s) => s.rematch);
+  const journalLen = useImpStore((s) => s.journal.length);
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { full, view, viewingAs, canUndo, canRedo, botToMove, botSeats, autoRun } = useImpView();
 
   useEffect(() => {
     if (gameId && (!full || full.gameId !== gameId)) loadGame(gameId);
   }, [gameId]);
+
+  const onRematch = async () => {
+    const res = await rematch();
+    if (res) navigate(`/game/${res.gameId}`);
+  };
 
   if (!view || !full) {
     return (
@@ -69,6 +82,23 @@ export default function Game() {
             </span>
           )}
           <div className="ml-auto flex items-center gap-3">
+            <button
+              className="btn-secondary !py-0.5 !px-2"
+              onClick={() => setLegendOpen(true)}
+              title="Icon & rules cheat-sheet"
+              aria-label="Open the icon and rules cheat-sheet"
+            >
+              ? Key
+            </button>
+            {journalLen > 0 && (
+              <button
+                className="btn-secondary !py-0.5 !px-2"
+                onClick={() => setHistoryOpen(true)}
+                title="Replay the move history"
+              >
+                ⧗ History
+              </button>
+            )}
             {botSeats.length > 0 && (
               <label className="flex items-center gap-1 text-xs text-sand-100/60" title="Bots play their turns automatically">
                 <input type="checkbox" checked={autoRun} onChange={(e) => setAutoRun(e.target.checked)} />
@@ -109,12 +139,21 @@ export default function Game() {
           </div>
         </header>
 
+        {view.phase === 'finished' && (
+          <div className="mb-4">
+            <WinnerCelebration view={view} />
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_300px] 2xl:grid-cols-[300px_minmax(0,1fr)_340px] gap-4">
           <div className="space-y-4">
             {view.phase === 'finished' && (
               <section className="panel border-amber-600">
                 <h2 className="panel-title">Final results</h2>
                 <ImpGameOver view={view} />
+                <button className="btn w-full mt-3" onClick={onRematch} title="Start a new game with the same players">
+                  ↺ Rematch — same players
+                </button>
               </section>
             )}
             <section className="panel">
@@ -129,8 +168,12 @@ export default function Game() {
             </section>
           </div>
 
-          <div>
-            <ImpBoard view={view} viewingAs={viewingAs} />
+          {/* On narrow screens the board scrolls horizontally inside its own
+              container (min-width) so the page body never scrolls sideways. */}
+          <div className="overflow-x-auto lg:overflow-visible">
+            <div className="min-w-[680px] lg:min-w-0">
+              <ImpBoard view={view} viewingAs={viewingAs} />
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -162,6 +205,9 @@ export default function Game() {
           </button>
         )}
       </div>
+
+      {legendOpen && <ImpLegend onClose={() => setLegendOpen(false)} />}
+      {historyOpen && <ImpReplayBar onClose={() => setHistoryOpen(false)} />}
     </main>
   );
 }

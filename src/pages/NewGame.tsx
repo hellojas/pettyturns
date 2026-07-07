@@ -62,6 +62,7 @@ export default function NewGame() {
                 <button
                   className="btn-secondary inline-flex items-center"
                   onClick={() => setSeats(seats.filter((_, j) => j !== i))}
+                  aria-label={`Remove seat ${i + 1}`}
                   title="Remove this seat"
                 >
                   <Icon name="close" size={12} />

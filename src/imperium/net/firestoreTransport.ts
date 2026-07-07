@@ -1,4 +1,5 @@
 import {
+  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -15,6 +16,8 @@ import type { ImpAction, ImpGameState, PlayerId } from '../types';
 import { ensureAuth, getDb } from './firebaseConfig';
 import { buildSnapshot, evaluateSubmit, liveState } from './serverLogic';
 import type {
+  ChatMessage,
+  ChatSinceResult,
   CreateGameInput,
   GameSnapshot,
   ImpGameSummary,
@@ -51,6 +54,8 @@ interface FireDoc {
   journalJson: string;
   cursor: number;
   botSeats: PlayerId[];
+  /** Seat → owning identity map (see StoredImpGame.seatOwners). */
+  seatOwners: Partial<Record<PlayerId, string>>;
   createdAt: string;
   updatedAt: string;
   // Denormalised summary (recomputed on every write).
@@ -67,6 +72,7 @@ function toFireDoc(game: StoredImpGame, live: ImpGameState): FireDoc {
     journalJson: JSON.stringify(game.journal),
     cursor: game.journal.length,
     botSeats: game.botSeats,
+    seatOwners: game.seatOwners ?? {},
     createdAt: game.createdAt,
     updatedAt: game.updatedAt,
     players: Object.values(live.players).map((p) => p.name),
@@ -82,6 +88,7 @@ function fromFireDoc(d: FireDoc): StoredImpGame {
     initial: JSON.parse(d.initialJson) as ImpGameState,
     journal: JSON.parse(d.journalJson) as ImpAction[],
     botSeats: d.botSeats ?? [],
+    seatOwners: d.seatOwners ?? {},
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
   };
@@ -194,5 +201,33 @@ export class FirestoreTransport implements ImpGameTransport {
   async remove(gameId: string): Promise<void> {
     await ensureAuth();
     await deleteDoc(doc(getDb(), COLLECTION, gameId));
+  }
+
+  // --- Side-channel chat as a per-game subcollection. Ordering is by client
+  //     ISO timestamp; seq is the index in that order, so `chatSince` is a
+  //     simple slice. Eventually-consistent, which is fine for a chat feed. ---
+  async postChat(gameId: string, msg: Omit<ChatMessage, 'seq' | 'at'>): Promise<void> {
+    await ensureAuth();
+    await addDoc(collection(getDb(), COLLECTION, gameId, 'chat'), { ...msg, at: new Date().toISOString() });
+  }
+
+  async chatSince(gameId: string, sinceCount: number): Promise<ChatSinceResult | null> {
+    await ensureAuth();
+    const q = query(collection(getDb(), COLLECTION, gameId, 'chat'), orderBy('at', 'asc'));
+    const docs = await getDocs(q);
+    const all = docs.docs.map((d, i) => ({ seq: i, ...(d.data() as Omit<ChatMessage, 'seq'>) }));
+    const from = Math.max(0, sinceCount);
+    return { cursor: all.length, messages: all.slice(from) };
+  }
+
+  subscribeChat(gameId: string, listener: (count: number) => void): () => void {
+    void ensureAuth();
+    return onSnapshot(
+      query(collection(getDb(), COLLECTION, gameId, 'chat'), orderBy('at', 'asc')),
+      (snap) => listener(snap.size),
+      () => {
+        /* swallow permission/transient errors; the store's poll recovers */
+      },
+    );
   }
 }

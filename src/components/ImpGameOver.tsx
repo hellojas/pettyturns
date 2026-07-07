@@ -82,8 +82,9 @@ export default function ImpGameOver({ view }: { view: ImpVisibleState }) {
         return (
           <div
             key={pid}
-            className="rounded-lg border overflow-hidden"
+            className="anim-rise rounded-lg border overflow-hidden"
             style={{
+              ['--delay' as string]: `${rank * 0.12}s`,
               borderColor: isWinner ? '#e6c34a99' : `${seat}44`,
               background: isWinner
                 ? `linear-gradient(150deg, #2a2113, #1c150f), radial-gradient(120% 120% at 0% 0%, ${seat}26, transparent 55%)`
