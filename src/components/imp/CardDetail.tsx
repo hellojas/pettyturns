@@ -159,7 +159,7 @@ export function CardDetailPopover({ anchor, model }: { anchor: HTMLElement; mode
   return createPortal(
     <div
       ref={ref}
-      className="fixed z-[999] pointer-events-none w-60 rounded-lg border border-sand-700/70 bg-dusk-950/97 shadow-2xl p-2.5 text-xs"
+      className="fixed z-[999] pointer-events-none w-60 rounded-lg border border-sand-700/70 bg-dusk-950 shadow-2xl p-2.5 text-xs"
       style={{ left: pos?.left ?? -9999, top: pos?.top ?? -9999, visibility: pos ? 'visible' : 'hidden' }}
     >
       <div className="flex items-center gap-1.5 flex-wrap">
@@ -170,10 +170,10 @@ export function CardDetailPopover({ anchor, model }: { anchor: HTMLElement; mode
           </span>
         )}
       </div>
-      <div className="text-[10px] text-sand-100/45 mb-1.5">{model.sub}</div>
+      <div className="text-[10px] text-sand-100/55 mb-1.5">{model.sub}</div>
       {model.sections.map((s) => (
         <div key={s.label} className="mt-1.5 first:mt-0">
-          <div className="text-[8.5px] uppercase tracking-widest text-sand-100/40">{s.label}</div>
+          <div className="text-[8.5px] uppercase tracking-widest text-sand-100/50">{s.label}</div>
           {s.lines.map((line, i) => (
             <div key={i} className="text-[11px] text-sand-100/85 leading-snug">{line}</div>
           ))}
