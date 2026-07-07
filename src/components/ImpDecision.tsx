@@ -58,7 +58,7 @@ export default function ImpDecision({ view, viewingAs }: { view: ImpVisibleState
                 className="btn-secondary !py-0.5"
                 onClick={() => resolve({ trashCardId: cardId })}
               >
-                Trash {IMP_CARD_DEFS[view.cardsById[cardId].defId].name}
+                Trash {IMP_CARD_DEFS[view.cardsById[cardId]?.defId]?.name ?? cardId}
               </button>
             ))}
           </div>
@@ -72,21 +72,19 @@ export default function ImpDecision({ view, viewingAs }: { view: ImpVisibleState
         <div className="space-y-1.5">
           <div className="text-sand-200">
             Top of deck:{' '}
-            {decision.cardId ? (
-              (() => {
-                const peekDef = IMP_CARD_DEFS[view.cardsById[decision.cardId].defId];
-                return (
-                  <CardRef
-                    def={peekDef}
-                    className="font-semibold text-sand-100 underline decoration-dotted decoration-sand-100/40 underline-offset-2 cursor-help"
-                  >
-                    {peekDef.name}
-                  </CardRef>
-                );
-              })()
-            ) : (
-              <span className="font-semibold">(hidden)</span>
-            )}
+            {(() => {
+              const inst = decision.cardId ? view.cardsById[decision.cardId] : undefined;
+              const peekDef = inst ? IMP_CARD_DEFS[inst.defId] : undefined;
+              if (!peekDef) return <span className="font-semibold">(hidden)</span>;
+              return (
+                <CardRef
+                  def={peekDef}
+                  className="font-semibold text-sand-100 underline decoration-dotted decoration-sand-100/40 underline-offset-2 cursor-help"
+                >
+                  {peekDef.name}
+                </CardRef>
+              );
+            })()}
           </div>
           <div className="flex gap-1.5">
             <button className="btn !py-0.5" onClick={() => resolve({ discardPeeked: false })}>

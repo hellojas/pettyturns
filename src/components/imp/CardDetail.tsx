@@ -68,6 +68,7 @@ export interface DetailModel {
 
 /** Full detail model for a deck/starting card. */
 export function cardDetail(def: ImpCardDef, signetLeaderId?: string): DetailModel {
+  if (!def) return { name: 'Unknown card', sub: 'definition not found', sections: [] };
   const faction = cardFaction(def) ?? undefined;
   const sections: Section[] = [];
 

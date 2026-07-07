@@ -14,6 +14,9 @@ export default function ImpMarket({ view, viewingAs }: { view: ImpVisibleState; 
 
   const CardCell = ({ id, defId, note, soldOut }: { id: string; defId: string; note?: string; soldOut?: boolean }) => {
     const def = IMP_CARD_DEFS[defId];
+    // A card def that no longer exists (e.g. a stale save) renders a placeholder
+    // instead of crashing the market.
+    if (!def) return <ImpCard def={def as never} />;
     const affordable = canBuy && !soldOut && p!.persuasion >= def.cost && def.cost > 0;
     const tooRich = canBuy && !soldOut && p!.persuasion < def.cost && def.cost > 0;
     return (

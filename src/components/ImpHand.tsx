@@ -70,7 +70,7 @@ export default function ImpHand({ view, viewingAs }: { view: ImpVisibleState; vi
           {pending && (
             <div className="rounded border border-amber-700/60 bg-amber-950/20 p-2 space-y-1.5">
               <div className="text-sand-200">
-                {pendingDef!.name} → {space ? space.name : 'pick a highlighted space on the board'}
+                {pendingDef?.name ?? 'Card'} → {space ? space.name : 'pick a highlighted space on the board'}
               </div>
               {space?.combat && (
                 <label className="flex items-center gap-2">

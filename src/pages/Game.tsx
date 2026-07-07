@@ -12,7 +12,8 @@ import LeaderPortrait from '../components/imp/LeaderPortrait';
 import { Icon } from '../components/imp/icons';
 import ImpLegend from '../components/imp/ImpLegend';
 import WinnerCelebration from '../components/imp/WinnerCelebration';
-import { useImpStore, useImpView } from '../lib/impStore';
+import { deleteImpGame, useImpStore, useImpView } from '../lib/impStore';
+import { IMP_CARD_DEFS } from '../imperium/data/cards';
 
 /** Main game screen: players/conflict left, board center, hand/market/log right. */
 export default function Game() {
@@ -61,6 +62,45 @@ export default function Game() {
             <Link to="/" className="btn inline-block mt-1">
               Back to home
             </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // A game saved before a deck rebuild can reference card ids that no longer
+  // exist. Rather than render a half-broken board, surface it plainly.
+  const incompatible = Object.values(full.cardsById).some((c) => !IMP_CARD_DEFS[c.defId]);
+  if (incompatible) {
+    return (
+      <main className="min-h-screen bg-dusk-950 text-sand-100 flex items-center justify-center p-6">
+        <div
+          className="relative overflow-hidden rounded-2xl px-8 py-10 max-w-sm text-center"
+          style={{
+            background: 'radial-gradient(120% 90% at 50% -20%, #3a2a1a, #17110b 72%)',
+            border: '1px solid #7b422277',
+            boxShadow: 'inset 0 0 60px -18px #000',
+          }}
+        >
+          <div className="tex-spice absolute inset-0 pointer-events-none opacity-60" aria-hidden />
+          <div className="relative space-y-3">
+            <div className="font-display text-2xl font-bold text-sand-300 tracking-wide">A game from another age</div>
+            <p className="text-sm text-sand-100/60">
+              This saved game was created with an earlier version of the card set and can no longer be
+              loaded. Start a fresh game to play with the current deck.
+            </p>
+            <div className="flex items-center justify-center gap-2 pt-1">
+              <Link to="/new" className="btn inline-block">New game</Link>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  if (gameId) deleteImpGame(gameId);
+                  navigate('/');
+                }}
+              >
+                Delete &amp; go home
+              </button>
+            </div>
           </div>
         </div>
       </main>

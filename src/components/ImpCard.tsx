@@ -49,6 +49,24 @@ export default function ImpCard({
   footer?: ReactNode;
   className?: string;
 }) {
+  // Hovering a card reveals a full plain-language detail popover (after a short
+  // dwell, or instantly while the inspect key is held). Called before any early
+  // return so hook order stays stable.
+  const { ref: wrapRef, handlers, show } = useInspectHover<HTMLDivElement>();
+
+  // A card whose definition no longer exists (e.g. a game saved before a deck
+  // rebuild renamed cards) must not crash the whole app — show a placeholder.
+  if (!def) {
+    return (
+      <div className={`flex flex-col ${className}`}>
+        <div className="rounded-lg border border-dashed border-sand-800/60 bg-dusk-900 px-2 py-3 text-center text-[11px] italic text-sand-100/45">
+          Unknown card
+        </div>
+        {footer && <div className="mt-1">{footer}</div>}
+      </div>
+    );
+  }
+
   const accent = cardAccent(def);
   const faction = cardFaction(def);
   const agent = gainsChips(def.agentGains);
@@ -61,10 +79,6 @@ export default function ImpCard({
 
   const clickable = !!onClick && !disabled;
   const Tag = clickable ? 'button' : 'div';
-
-  // Hovering a card reveals a full plain-language detail popover (after a short
-  // dwell, or instantly while the inspect key is held).
-  const { ref: wrapRef, handlers, show } = useInspectHover<HTMLDivElement>();
 
   return (
     <div ref={wrapRef} className={`flex flex-col ${className}`} {...handlers}>
