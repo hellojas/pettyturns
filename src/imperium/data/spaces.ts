@@ -56,7 +56,7 @@ export const IMP_SPACES: Record<SpaceId, BoardSpaceDef> = {
     group: 'beneGesserit',
     icon: 'beneGesserit',
     cost: { spice: 2 },
-    gains: { trashCards: 1, drawCards: 2 }, // VERIFY: trash one of your cards, then draw two
+    gains: { trashCards: 1, drawCards: 2 }, // Confirmed: trash one card, draw two (also grants Bene Gesserit influence)
     influenceGain: 'beneGesserit',
   },
   secrets: {
