@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { chooseBotAction } from '../../imperium/engine/bot';
 import { impApply, impValidate } from '../../imperium/engine/engine';
 import type { ImpGameState, PlayerId } from '../../imperium/types';
+import { IMP_CONSTANTS } from '../../imperium/data/constants';
 import { makeImp } from './helpers';
 
 /** Drive a game where every seat is a bot until it finishes (or a safety cap). */
@@ -108,6 +109,28 @@ describe('heuristic bot', () => {
       hidden: { ...s.hidden, p1: { ...s.hidden.p1, intrigue: [ambushId] } },
     };
     expect(chooseBotAction(s, 'p1')).toMatchObject({ type: 'imp/combatPass' });
+  });
+
+  it('resolves an anyInfluence decision with a concrete faction even when all tracks are maxed', () => {
+    // craft a state where p1 owes an anyInfluence choice but every track is at the
+    // cap — the preference list is empty, so the bot must still offer a legal faction
+    let s = makeImp(['A', 'B'], 3);
+    const maxed = { emperor: IMP_CONSTANTS.influenceMax, spacingGuild: IMP_CONSTANTS.influenceMax, beneGesserit: IMP_CONSTANTS.influenceMax, fremen: IMP_CONSTANTS.influenceMax };
+    s = {
+      ...s,
+      pendingDecisions: [
+        { id: 'inf-max', playerId: 'p1', kind: 'influence', prompt: 'Gain influence.', amount: 1 },
+      ],
+      players: {
+        ...s.players,
+        p1: { ...s.players.p1, influence: maxed },
+      },
+    };
+    const action = chooseBotAction(s, 'p1');
+    expect(action).not.toBeNull();
+    expect(action).toMatchObject({ type: 'imp/resolveDecision', decisionId: 'inf-max' });
+    expect((action as { faction?: string }).faction).toBeDefined();
+    expect(impValidate(s, action!).ok).toBe(true);
   });
 
   it('buys cards when it has persuasion (deck grows beyond the starting 10)', () => {

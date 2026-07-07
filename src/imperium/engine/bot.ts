@@ -13,6 +13,7 @@ import type {
   PlayerId,
 } from '../types';
 import { IMP_CONSTANTS } from '../data/constants';
+import { IMP_FACTIONS } from '../types';
 import { combatStrength, impValidate } from './engine';
 
 /**
@@ -124,7 +125,17 @@ function resolveDecision(state: ImpGameState, d: ImpPendingDecision, pid: Player
   const base = { type: 'imp/resolveDecision' as const, playerId: pid, decisionId: d.id };
   if (d.kind === 'influence') {
     const order = influencePreference(state, pid, d.factions);
-    return firstValid(state, [...order.map((faction) => ({ ...base, faction })), base]);
+    // Guarantee a concrete, legal faction is always offered: influencePreference
+    // drops every maxed track, so when all allowed tracks are at influenceMax the
+    // preference list is empty. A definite faction keeps the bot from stalling on
+    // an anyInfluence decision — the engine no-ops addInfluence on a maxed track,
+    // so a wasted-but-legal resolution is correct here.
+    const anyFaction = (d.factions ?? IMP_FACTIONS)[0];
+    return firstValid(state, [
+      ...order.map((faction) => ({ ...base, faction })),
+      { ...base, faction: anyFaction },
+      base,
+    ]);
   }
   if (d.kind === 'deckPeek') {
     return firstValid(state, [base, { ...base, discardPeeked: true }]); // prefer keeping
