@@ -246,6 +246,12 @@ interface ImpStore {
   localSeat: PlayerId | null;
   /** True while an async submit/refresh is in flight. */
   syncing: boolean;
+  /**
+   * Async only: when false (default), the rendered view is pinned to `localSeat`
+   * so a browser can only see its own hand. When true (a debug/god view enabled
+   * via `?debug=1`), the seat switcher works and every seat's hand is visible.
+   */
+  debugReveal: boolean;
 
   newGame(seats: Array<{ name: string; leaderId: LeaderId; isBot?: boolean }>, seed?: number): string;
   loadGame(gameId: string): boolean;
@@ -264,6 +270,8 @@ interface ImpStore {
   undo(): void;
   redo(): void;
   setViewingAs(viewer: PlayerId | 'SPECTATOR'): void;
+  /** Async: enable/disable the god view (see every seat's hand). Debug only. */
+  setDebugReveal(on: boolean): void;
   setPending(pending: PendingPlay | null): void;
   clearError(): void;
 }
@@ -384,6 +392,7 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   botSeats: [],
   autoRun: true,
   viewingAs: 'SPECTATOR',
+  debugReveal: false,
   pending: null,
   lastError: null,
   mode: 'hotseat',
@@ -647,6 +656,9 @@ export const useImpStore = create<ImpStore>((set, get) => ({
   setViewingAs(viewer) {
     set({ viewingAs: viewer, pending: null, lastError: null });
   },
+  setDebugReveal(on) {
+    set({ debugReveal: on });
+  },
   setPending(pending) {
     set({ pending });
   },
@@ -668,6 +680,8 @@ export function useImpView(): {
   mode: 'hotseat' | 'async';
   localSeat: PlayerId | null;
   syncing: boolean;
+  /** async: true when the god view is on (see all seats). */
+  debugReveal: boolean;
   /** async: whose move the game is waiting on (decision owner else the turn). */
   actor: PlayerId | null;
   /** async: true when this device's seat is the one to move. */
@@ -682,6 +696,7 @@ export function useImpView(): {
   const mode = useImpStore((s) => s.mode);
   const localSeat = useImpStore((s) => s.localSeat);
   const syncing = useImpStore((s) => s.syncing);
+  const debugReveal = useImpStore((s) => s.debugReveal);
   if (!state)
     return {
       full: null,
@@ -696,11 +711,17 @@ export function useImpView(): {
       mode,
       localSeat,
       syncing,
+      debugReveal,
       actor: null,
       yourTurn: false,
     };
-  const view = getVisibleImperiumState(state, viewingAs);
-  const allowed = viewingAs === 'SPECTATOR' ? [] : impAllowedActions(state, viewingAs);
+  // Security: in async, pin the rendered view to this device's own seat so it
+  // can only ever see its own hand. A `?debug=1` god view (debugReveal) unpins it
+  // and re-enables the seat switcher. Hotseat is always the free god view.
+  const effectiveViewer: PlayerId | 'SPECTATOR' =
+    mode === 'async' && !debugReveal && localSeat ? localSeat : viewingAs;
+  const view = getVisibleImperiumState(state, effectiveViewer);
+  const allowed = effectiveViewer === 'SPECTATOR' ? [] : impAllowedActions(state, effectiveViewer);
   const actor = currentActor(state);
   const botToMove = actor !== null && botSeats.includes(actor);
   const hotseat = mode === 'hotseat';
@@ -708,7 +729,7 @@ export function useImpView(): {
     full: state,
     view,
     allowed,
-    viewingAs,
+    viewingAs: effectiveViewer,
     canUndo: hotseat && cursor > 0,
     canRedo: hotseat && cursor < journalLen,
     botToMove,
@@ -717,6 +738,7 @@ export function useImpView(): {
     mode,
     localSeat,
     syncing,
+    debugReveal,
     actor,
     yourTurn: mode === 'async' && actor !== null && actor === localSeat,
   };

@@ -79,9 +79,11 @@ export default function AsyncGame() {
   const [params] = useSearchParams();
   const seat = params.get('seat') as PlayerId | null;
 
+  const debug = params.get('debug') === '1';
   const joinAsyncGame = useImpStore((s) => s.joinAsyncGame);
   const refreshAsync = useImpStore((s) => s.refreshAsync);
   const setViewingAs = useImpStore((s) => s.setViewingAs);
+  const setDebugReveal = useImpStore((s) => s.setDebugReveal);
   const lastError = useImpStore((s) => s.lastError);
   const clearError = useImpStore((s) => s.clearError);
   const { full, view, viewingAs, mode, localSeat, syncing, actor, yourTurn } = useImpView();
@@ -90,6 +92,13 @@ export default function AsyncGame() {
     if (gameId && seat) void joinAsyncGame(gameId, seat);
     return () => stopAsyncPolling();
   }, [gameId, seat]);
+
+  // The god view (see every seat's hand) is opt-in via ?debug=1; off by default
+  // so each browser only ever sees its own player's cards.
+  useEffect(() => {
+    setDebugReveal(debug);
+    return () => setDebugReveal(false);
+  }, [debug]);
 
   if (!seat) return <SeatPicker gameId={gameId ?? ''} />;
 
@@ -136,6 +145,14 @@ export default function AsyncGame() {
             <span className="text-sm text-sand-100/50">Waiting for {actorName ?? '…'}</span>
           )}
           <div className="ml-auto flex items-center gap-3">
+            {debug && (
+              <span
+                className="text-[11px] font-semibold text-amber-300 border border-amber-600/60 rounded px-1.5 py-0.5"
+                title="?debug=1 — every seat's hand is visible on this device. Remove ?debug=1 for the real per-seat view."
+              >
+                👁 DEBUG: all hands visible
+              </span>
+            )}
             {syncing && <span className="text-xs text-sand-100/40">syncing…</span>}
             <button
               className="btn-secondary !py-0.5 !px-2"
@@ -157,7 +174,7 @@ export default function AsyncGame() {
             )}
             <section className="panel">
               <h2 className="panel-title">Players</h2>
-              <ImpPlayerMat view={view} viewingAs={viewingAs} onViewAs={setViewingAs} />
+              <ImpPlayerMat view={view} viewingAs={viewingAs} onViewAs={debug ? setViewingAs : () => {}} />
             </section>
           </div>
 
