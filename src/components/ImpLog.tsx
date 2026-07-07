@@ -18,7 +18,7 @@ function eventIcon(event: string): IconName {
 export default function ImpLog({ view }: { view: ImpVisibleState }) {
   const entries = [...view.log].reverse();
   return (
-    <div className="space-y-0.5 overflow-y-auto max-h-[560px] pr-1 text-xs">
+    <div role="log" aria-label="Game log" className="space-y-0.5 overflow-y-auto max-h-[560px] pr-1 text-xs">
       {entries.map((entry) => {
         const pid = typeof entry.data?.pid === 'string' ? (entry.data.pid as string) : undefined;
         const seatIdx = pid ? view.playerOrder.indexOf(pid) : -1;
@@ -27,13 +27,14 @@ export default function ImpLog({ view }: { view: ImpVisibleState }) {
         return (
           <div
             key={entry.seq}
+            role="listitem"
             className="flex gap-1.5 items-start rounded pl-1.5 py-0.5"
             style={{ borderLeft: `2px solid ${seat ?? '#7b422255'}`, background: seat ? `${seat}0e` : undefined }}
           >
             <span className="w-5 shrink-0 text-[9px] text-sand-100/30 pt-[3px] tabular-nums">R{entry.round}</span>
             <Icon name={eventIcon(entry.event)} size={12} className="mt-[2px] shrink-0 opacity-75" />
             <span className={isPrivate ? 'text-purple-300' : 'text-sand-100/80'}>
-              {isPrivate && <Icon name="lock" size={10} className="mr-0.5 mb-[1px]" />}
+              {isPrivate && <Icon name="lock" size={10} title="private" className="mr-0.5 mb-[1px]" />}
               {entry.text}
             </span>
           </div>
