@@ -89,19 +89,24 @@ closed — that's the deferred server-side path (Cloud Functions + FCM).
 
 ## 3) Feature backlog (ranked, remaining)
 
-Several are already built on this branch (rematch, chat, replay bar, seat↔uid,
-PWA). Still open / next:
+Most polish + features are built and merged (rematch, chat, replay bar, seat↔uid,
+PWA, legend, deck piles, skeletons, winner celebration, turn notifications, and —
+per the audit — mobile/responsive layout, player-color legend, conflict-resolution
+animation, and the a11y pass incl. full reduced-motion coverage). **Deploy
+hardening is now DONE** (`firebase.json`, `.firebaserc`, `firestore.indexes.json`
+ship, and `FIREBASE_SETUP.md` documents `firebase deploy --only firestore:rules`).
 
-1. **Server-side redaction** (owner deferred it). For tournament-grade secrecy run
-   the engine in Cloud Functions or a standalone server; clients render
-   `snapshot().view` only (the transport interface already supports it, and
-   `seatOwners` is a first step). Revisit if opening to strangers.
-2. **Bots in async** — currently human-seats-only; `chooseBotAction` exists, needs a
-   stepper (client-driven or, better, server-driven).
-3. **In-game rules/VERIFY surfacing** — many data values are `VERIFY` placeholders;
-   a panel to review/edit active constants so owners can match their edition.
-4. **Deploy hardening** — `firebase.json`/`.firebaserc` for `firebase deploy` of
-   rules (currently pasted in console); confirm `sw.js` scope under the Pages subpath.
+Intentionally **deferred** (need bigger changes / owner decision):
+1. **Server-side redaction** — owner chose client-side redaction. For
+   tournament-grade secrecy, run the engine in Cloud Functions / a standalone
+   server; clients render `snapshot().view` only (the transport already supports
+   it, and `seatOwners` is a first step). Revisit only if opening to strangers.
+2. **Bots in async** — human-seats-only today. `chooseBotAction` exists, but a
+   client can't submit a bot's move under the seat-ownership rule (`viewerId`
+   must equal the acting seat), so stepping bots needs a **server** (or a
+   deliberate rules relaxation for bot seats). Deferred with server-side work.
+3. **In-game VERIFY surfacing** — optional: a read-only panel of the active
+   `IMP_CONSTANTS`/leader values so owners can match their edition.
 
 ## Quick verification recipe
 
@@ -118,7 +123,7 @@ grep -o 'url(\./[^)]*)' dist/assets/*.css     # must be relative ./ , never /ass
 - **Merged to `master` (`0a9cf8e`).** The feature batch and master's polish pass
   were reconciled and fast-forwarded onto master; `tsc` clean, 464 tests, build
   clean. `claude/board-visual-improvements-nh4hpq` matches master.
-- Remaining open items are the "Visual polish — remaining" list above (mobile
-  layout, player-color legend audit, conflict-resolution animation, a11y pass)
-  plus the ranked feature backlog (server-side redaction, async bots, VERIFY
-  surfacing, deploy hardening). Turn notifications are DONE.
+- The visual-polish and a11y items (mobile layout, player-color legend,
+  conflict-resolution animation, reduced-motion coverage) and deploy hardening
+  are all DONE. The only remaining items are the intentionally-deferred backlog
+  above (server-side redaction, async bots, optional VERIFY surfacing).

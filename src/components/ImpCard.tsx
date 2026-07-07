@@ -106,7 +106,7 @@ export default function ImpCard({
             illustration with the name + faction band across the top, the
             persuasion cost as a corner tab top-right, and the agent icons in a
             column down the left edge (wrapping if a card has many). */}
-        <div className="relative">
+        <div className="relative overflow-hidden">
           <CardArt def={def} accent={accent} height={76} className="group-hover:scale-[1.03] transition-transform origin-center" />
           {/* Title scrim: a solid dark band across the top third so the name
               always reads on its own strip, then clears to show the art below.
@@ -129,17 +129,25 @@ export default function ImpCard({
               {def.cost}
             </span>
           )}
-          {/* Agent-icon rail down the left edge (rulebook layout). Icons shrink
-              when a card carries many so the column always fits the art. */}
+          {/* Agent-icon rail down the left edge (rulebook layout). Icon size, gap,
+              and padding tighten as a card carries more icons so the whole column
+              always fits inside the banner and never spills onto the effects. */}
           {def.icons.length > 0 && (
-            <div className="absolute left-1.5 top-1 bottom-1 z-20 flex flex-col justify-start gap-0.5">
+            <div
+              className="absolute left-1.5 top-1 bottom-1 z-20 flex flex-col justify-start"
+              style={{ gap: def.icons.length >= 5 ? 0 : 2 }}
+            >
               {def.icons.map((ic, i) => (
                 <span
                   key={i}
                   className="inline-flex items-center justify-center rounded-[3px] ring-1 ring-black/70"
-                  style={{ background: '#0a0705d9', padding: 1.5 }}
+                  style={{ background: '#0a0705d9', padding: def.icons.length >= 6 ? 1 : 1.5 }}
                 >
-                  <Icon name={ic} size={def.icons.length <= 4 ? 12 : def.icons.length <= 5 ? 11 : 9} title={ic} />
+                  <Icon
+                    name={ic}
+                    size={def.icons.length <= 4 ? 12 : def.icons.length === 5 ? 10 : def.icons.length === 6 ? 8 : 7}
+                    title={ic}
+                  />
                 </span>
               ))}
             </div>
