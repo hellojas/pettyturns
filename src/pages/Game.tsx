@@ -107,10 +107,21 @@ export default function Game() {
     );
   }
 
+  // Screen-reader status derived purely from view state so it flips on the
+  // turn/phase edge. Combat takes precedence, then own turn, then waiting.
+  const liveStatus =
+    view.phase === 'combat'
+      ? 'Combat window open'
+      : view.phase === 'playerTurns' && view.turn === viewingAs
+        ? 'Your turn to act'
+        : view.phase === 'playerTurns' && view.turn
+          ? `Waiting for ${view.players[view.turn].name}`
+          : '';
+
   return (
     <main className="min-h-screen bg-arrakis-night text-sand-100 p-4">
       <div className="max-w-[1760px] mx-auto">
-        <header className="flex items-baseline gap-4 mb-3">
+        <header className="flex flex-wrap items-baseline gap-4 gap-y-2 mb-3">
           <Link to="/" className="font-display text-lg font-bold text-sand-300 hover:underline tracking-wide">
             Imperium Engine
           </Link>
@@ -121,7 +132,7 @@ export default function Game() {
               Game over — {view.players[view.winner].name} wins!
             </span>
           )}
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex flex-wrap items-center gap-3 gap-y-2">
             <button
               className="btn-secondary !py-0.5 !px-2"
               onClick={() => setLegendOpen(true)}
@@ -236,9 +247,21 @@ export default function Game() {
           </div>
         </div>
 
+        {/* Visually-hidden live region: announces turn / waiting / combat edges
+            to screen readers. Driven off `view` so it re-renders on the phase
+            or turn change. `sr-only`-style inline so it needs no extra CSS. */}
+        <div
+          aria-live="polite"
+          className="absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0"
+          style={{ clip: 'rect(0 0 0 0)', clipPath: 'inset(50%)' }}
+        >
+          {liveStatus}
+        </div>
+
         {lastError && (
           <button
             onClick={clearError}
+            role="alert"
             className="fixed bottom-4 right-4 text-left text-xs text-red-300 border border-red-800 rounded p-2 bg-red-950/90 max-w-sm"
           >
             {lastError} <span className="text-red-400/60">(click to dismiss)</span>
